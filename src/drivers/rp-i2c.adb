@@ -52,8 +52,11 @@ package body RP.I2C is
    is
       use HAL;
       P : RP2040_SVD.I2C.I2C_Peripheral renames This.Periph.all;
-      Cycle : constant Nanoseconds := Nanoseconds (1.0e9 * (1.0 / Float (RP.Clock.Frequency (RP.Clock.SYS))));
+      Clock_Frequency : Hertz;
+      Cycle : Nanoseconds;
    begin
+      RP.Clock.Frequency (RP.Clock.SYS, Clock_Frequency);
+      Cycle := Nanoseconds (1.0e9 * (1.0 / Float (Clock_Frequency)));
       if (T.High + T.Low) <= 1_000 then
          P.IC_CON.SPEED := RP2040_SVD.I2C.HIGH;
       elsif (T.High + T.Low) <= 2_500 then

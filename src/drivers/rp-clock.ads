@@ -10,7 +10,7 @@ with RP2040_SVD;
 with HAL; use HAL;
 
 package RP.Clock
-   with Preelaborate
+   with Preelaborate, SPARK_Mode
 is
    subtype XOSC_Hertz is Hertz range 0 .. 15_000_000
       with Static_Predicate => XOSC_Hertz in 0 | 1_000_000 .. 15_000_000;
@@ -36,10 +36,10 @@ is
        PLL_SYS, GPIN0, GPIN1, PLL_USB, ROSC, XOSC);
 
    procedure Enable
-      (CID : Clock_Id);
+     (CID : Clock_Id);
 
    procedure Disable
-      (CID : Clock_Id);
+     (CID : Clock_Id);
 
    subtype GP_Output is Clock_Id range GPOUT0 .. GPOUT3;
    subtype GP_Source is Clock_Id range REF .. XOSC;
@@ -59,9 +59,14 @@ is
       (GP  : GP_Output;
        Div : GP_Divider);
 
+   procedure Check_Enabled
+     (CID : Clock_Id;
+      Result : out Boolean)
+     with Pre => CID in GPOUT0 .. RTC;
+
    function Enabled
-      (CID : Clock_Id)
-      return Boolean;
+          (CID : Clock_Id)
+     return Boolean;
 
    subtype SYS_Clock_Id is Clock_Id range PLL_SYS .. XOSC;
    procedure Set_SYS_Source
@@ -117,17 +122,20 @@ is
       (PLL    : PLL_Clock_Id;
        Config : PLL_Config)
    with Pre => Config.POSTDIV1 >= Config.POSTDIV2
-               and (Integer (Config.FREF) / Integer (Config.REFDIV)) >= 5_000_000
-               and (Integer (Config.FREF) / Integer (Config.REFDIV)) * Integer (Config.FBDIV)
-                  in 400_000_000 .. 1_600_000_000;
+     and then (Integer (Config.FREF) / Integer (Config.REFDIV)) >= 5_000_000
+     and then Integer (Config.FBDIV) > 0
+       and then (Integer (Config.FREF) / Integer (Config.REFDIV)) <= Integer'Last / Integer (Config.FBDIV)
+     and then (Integer (Config.FREF) / Integer (Config.REFDIV)) * Integer (Config.FBDIV)
+       in 400_000_000 .. 1_600_000_000;
    --  Remember to switch clk_sys to another source before modifying PLL_SYS
 
    subtype Countable_Clock_Id is Clock_Id range REF .. RTC;
-   function Frequency
-      (CID      : Countable_Clock_Id;
-       Rounded  : Boolean := True;
-       Accuracy : UInt4 := 15)
-       return Hertz;
+   procedure Frequency
+     (CID      : Countable_Clock_Id;
+      Result : out Hertz;
+      Rounded  : Boolean := True;
+      Accuracy : UInt4 := 15);
+
    --  By default, the fractional part of the frequency counter result register
    --  is ignored. Setting Rounded = False includes the fractional frequency,
    --  which may include as much as 2048 KHz of error, depending on the
@@ -204,7 +212,7 @@ private
       INT  : CLK_DIV_INT_Field := 1;
       FRAC : CLK_DIV_FRAC_Field := 0;
    end record
-      with Volatile_Full_Access, Object_Size => 32;
+      with Volatile_Full_Access, Object_Size => 32, Size => 32;
    for CLK_DIV_Register use record
       INT  at 0 range 8 .. 31;
       FRAC at 0 range 0 .. 7;
@@ -307,6 +315,6 @@ private
    end record;
 
    CLOCKS_Periph : aliased CLOCKS_Peripheral
-      with Import, Address => RP2040_SVD.CLOCKS_Base;
+      with Import, Async_Writers => True, Effective_Reads, Address => RP2040_SVD.CLOCKS_Base;
 
 end RP.Clock;

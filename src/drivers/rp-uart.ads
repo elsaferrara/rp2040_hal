@@ -10,7 +10,7 @@ with RP.Clock;
 with System;
 
 package RP.UART
-   with Preelaborate
+   with Preelaborate, Elaborate_Body
 is
    subtype UART_Word_Size is Integer range 5 .. 8;
    subtype UART_Stop_Bits is Integer range 1 .. 2;
@@ -45,7 +45,9 @@ is
    procedure Configure
       (This   : in out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
-      with Pre => RP.Clock.Frequency (RP.Clock.PERI) > 3_686_400;
+     with Pre => RP.Clock.Enabled (RP.Clock.PERI)
+     --  with Pre => RP.Clock.Frequency (RP.Clock.PERI) > 3_686_400
+   ;
 
    --  If parity is enabled, the parity bit may be forced high using this
    --  procedure. Stick parity is used in some protocols to indicate the

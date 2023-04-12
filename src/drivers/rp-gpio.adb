@@ -7,10 +7,10 @@
 with RP2040_SVD.SIO; use RP2040_SVD.SIO;
 with RP.Reset;
 
-package body RP.GPIO is
+package body RP.GPIO with SPARK_Mode is
    function Pin_Mask (Pin : GPIO_Pin)
       return GPIO_Pin_Mask
-   is (GPIO_Pin_Mask (Shift_Left (UInt32 (1), GPIO_Pin'Pos (Pin))));
+   is (GPIO_Pin_Mask (2 ** GPIO_Pin'Pos (Pin)));
 
    procedure Enable is
       use RP.Reset;
@@ -43,7 +43,7 @@ package body RP.GPIO is
    is (GPIO_Enabled);
 
    procedure Configure
-      (This      : in out GPIO_Point;
+      (This      : GPIO_Point;
        Mode      : GPIO_Config_Mode;
        Pull      : GPIO_Pull_Mode := Floating;
        Func      : GPIO_Function := SIO;
@@ -98,38 +98,47 @@ package body RP.GPIO is
       end case;
    end Configure;
 
-   function Get
-      (This : GPIO_Point)
-      return Boolean
-   is ((SIO_Periph.GPIO_IN.GPIO_IN and Pin_Mask (This.Pin)) /= 0);
+   procedure Get
+     (This : GPIO_Point;
+       Result : out Boolean)
+   is
+      Tmp : constant UInt30 := SIO_Periph.GPIO_IN.GPIO_IN;
+   begin
+      Result := ((Tmp and Pin_Mask (This.Pin)) /= 0);
+   end Get;
 
    procedure Enable_Interrupt
-      (This    : in out GPIO_Point;
-       Trigger : Interrupt_Triggers)
+     (This    : GPIO_Point;
+      Trigger : Interrupt_Triggers)
+     with SPARK_Mode => Off
    is
       Group  : constant Natural := Natural (This.Pin) / 8;
       Offset : constant Natural := Natural (This.Pin) mod 8;
       Mask   : constant UInt4 := Interrupt_Triggers'Enum_Rep (Trigger);
+      Tmp   : constant UInt4 := IO_BANK_Periph.PROC0_INTE (Group) (Offset);
    begin
       IO_BANK_Periph.INTR (Group) (Offset) := Mask;
-      IO_BANK_Periph.PROC0_INTE (Group) (Offset) := IO_BANK_Periph.PROC0_INTE (Group) (Offset) or Mask;
+      IO_BANK_Periph.PROC0_INTE (Group) (Offset) := Tmp or Mask;
    end Enable_Interrupt;
 
    procedure Disable_Interrupt
-      (This    : in out GPIO_Point;
-       Trigger : Interrupt_Triggers)
+     (This    : GPIO_Point;
+      Trigger : Interrupt_Triggers)
+     with SPARK_Mode => Off
    is
       Group  : constant Natural := Natural (This.Pin) / 8;
       Offset : constant Natural := Natural (This.Pin) mod 8;
       Mask   : constant UInt4 := Interrupt_Triggers'Enum_Rep (Trigger);
+      Tmp   : constant UInt4 := IO_BANK_Periph.PROC0_INTE (Group) (Offset);
    begin
       IO_BANK_Periph.INTR (Group) (Offset) := Mask;
-      IO_BANK_Periph.PROC0_INTE (Group) (Offset) := IO_BANK_Periph.PROC0_INTE (Group) (Offset) and not Mask;
+      IO_BANK_Periph.PROC0_INTE (Group) (Offset) := Tmp and not Mask;
    end Disable_Interrupt;
 
    procedure Acknowledge_Interrupt
-      (Pin     : GPIO_Pin;
-       Trigger : Interrupt_Triggers)
+     (Pin     : GPIO_Pin;
+      Trigger : Interrupt_Triggers)
+     with SPARK_Mode => Off
    is
       Group  : constant Natural := Natural (Pin) / 8;
       Offset : constant Natural := Natural (Pin) mod 8;
@@ -139,43 +148,43 @@ package body RP.GPIO is
    end Acknowledge_Interrupt;
 
    function Interrupt_Status
-      (Pin     : GPIO_Pin;
-       Trigger : Interrupt_Triggers)
+     (Pin     : GPIO_Pin;
+      Trigger : Interrupt_Triggers)
        return Boolean
    is
       Group  : constant Natural := Natural (Pin) / 8;
       Offset : constant Natural := Natural (Pin) mod 8;
       Mask   : constant UInt4 := Interrupt_Triggers'Enum_Rep (Trigger);
+      Tmp   : constant UInt4 := IO_BANK_Periph.PROC0_INTS (Group) (Offset);
    begin
-      return (IO_BANK_Periph.PROC0_INTS (Group) (Offset) and Mask) /= 0;
+      return (Tmp and Mask) /= 0;
    end Interrupt_Status;
 
-   overriding
    function Support
-      (This : GPIO_Point;
-       Capa : HAL.GPIO.Capability)
+     --  (This : GPIO_Point;
+     --   Capa : HAL.GPIO.Capability)
        return Boolean
    is (True);
 
-   overriding
    function Mode
-      (This : GPIO_Point)
-      return HAL.GPIO.GPIO_Mode
+     (This : GPIO_Point)
+       return HAL.GPIO.GPIO_Mode
    is
+      Tmp : constant GPIO_Function := IO_BANK_Periph.GPIO (This.Pin).CTRL.FUNCSEL;
+      Tmp2 : constant Boolean := PADS_BANK_Periph.GPIO (This.Pin).OD;
    begin
-      if IO_BANK_Periph.GPIO (This.Pin).CTRL.FUNCSEL /= SIO then
+      if Tmp /= SIO then
          return Unknown_Mode;
-      elsif PADS_BANK_Periph.GPIO (This.Pin).OD then
+      elsif Tmp2 then
          return Input;
       else
          return Output;
       end if;
    end Mode;
 
-   overriding
    procedure Set_Mode
-      (This : in out GPIO_Point;
-       Mode : HAL.GPIO.GPIO_Config_Mode)
+     (This : GPIO_Point;
+      Mode : HAL.GPIO.GPIO_Config_Mode)
    is
    begin
       case Mode is
@@ -186,25 +195,25 @@ package body RP.GPIO is
       end case;
    end Set_Mode;
 
-   overriding
    function Pull_Resistor
-      (This : GPIO_Point)
-      return HAL.GPIO.GPIO_Pull_Resistor
+     (This : GPIO_Point)
+       return HAL.GPIO.GPIO_Pull_Resistor
    is
+      Tmp : constant Boolean := PADS_BANK_Periph.GPIO (This.Pin).PUE;
+      Tmp2 : constant Boolean := PADS_BANK_Periph.GPIO (This.Pin).PDE;
    begin
-      if PADS_BANK_Periph.GPIO (This.Pin).PUE then
+      if Tmp then
          return Pull_Up;
-      elsif PADS_BANK_Periph.GPIO (This.Pin).PDE then
+      elsif Tmp2 then
          return Pull_Down;
       else
          return Floating;
       end if;
    end Pull_Resistor;
 
-   overriding
    procedure Set_Pull_Resistor
-      (This : in out GPIO_Point;
-       Pull : HAL.GPIO.GPIO_Pull_Resistor)
+     (This : GPIO_Point;
+      Pull : HAL.GPIO.GPIO_Pull_Resistor)
    is
    begin
       case Pull is
@@ -220,31 +229,31 @@ package body RP.GPIO is
       end case;
    end Set_Pull_Resistor;
 
-   overriding
-   function Set
-      (This : GPIO_Point)
-      return Boolean
-   is ((SIO_Periph.GPIO_IN.GPIO_IN and Pin_Mask (This.Pin)) /= 0);
-
-   overriding
    procedure Set
-      (This : in out GPIO_Point)
+     (This : GPIO_Point;
+      Result : out Boolean)
+   is
+      Tmp : constant UInt30 := SIO_Periph.GPIO_IN.GPIO_IN;
+   begin
+      Result := ((Tmp and Pin_Mask (This.Pin)) /= 0);
+   end Set;
+
+   procedure Set
+     (This : GPIO_Point)
    is
    begin
       SIO_Periph.GPIO_OUT_SET.GPIO_OUT_SET := Pin_Mask (This.Pin);
    end Set;
 
-   overriding
    procedure Clear
-      (This : in out GPIO_Point)
+     (This : GPIO_Point)
    is
    begin
       SIO_Periph.GPIO_OUT_CLR.GPIO_OUT_CLR := Pin_Mask (This.Pin);
    end Clear;
 
-   overriding
    procedure Toggle
-      (This : in out GPIO_Point)
+     (This : GPIO_Point)
    is
    begin
       SIO_Periph.GPIO_OUT_XOR.GPIO_OUT_XOR := Pin_Mask (This.Pin);

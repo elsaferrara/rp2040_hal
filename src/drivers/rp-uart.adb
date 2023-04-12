@@ -6,6 +6,7 @@
 with HAL; use HAL;
 with RP.Reset;
 with RP.Timer;
+with Ada.Unchecked_Conversion;
 
 package body RP.UART is
 
@@ -28,9 +29,12 @@ package body RP.UART is
           others => <>);
 
       declare
-         Div : constant UART_Divider := UART_Divider
-            (Float (RP.Clock.Frequency (RP.Clock.PERI)) / Float (Config.Baud * 16));
+         Clock_Frequency : Hertz;
+         Div : UART_Divider;
       begin
+         RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
+         Div := UART_Divider
+            (Float (Clock_Frequency) / Float (Config.Baud * 16));
          This.Periph.UARTIBRD.BAUD_DIVINT := Div_Integer (Div);
          This.Periph.UARTFBRD.BAUD_DIVFRAC := Div_Fraction (Div);
       end;
@@ -110,15 +114,17 @@ package body RP.UART is
       --  0    1     Full
       --  1    0     Empty
       --  1    1     Invalid
-      Flags : constant UARTFR_Register := This.Periph.UARTFR;
+      Is_TXFE : Boolean := This.Periph.UARTFR.TXFE;
+      Is_TXFF : Boolean := This.Periph.UARTFR.TXFF;
+      Is_BUSY : Boolean := This.Periph.UARTFR.BUSY;
    begin
-      if Flags.TXFE = False and Flags.TXFF = False then
+      if Is_TXFE = False and Is_TXFF = False then
          return Not_Full;
-      elsif Flags.TXFE = False and Flags.TXFF = True then
+      elsif Is_TXFE = False and Is_TXFF = True then
          return Full;
-      elsif Flags.BUSY then
+      elsif Is_BUSY then
          return Busy;
-      elsif Flags.TXFE = True and Flags.TXFF = False then
+      elsif Is_TXFE = True and Is_TXFF = False then
          return Empty;
       else
          return Invalid;
@@ -134,7 +140,7 @@ package body RP.UART is
       --  0    1     Full
       --  1    0     Empty
       --  1    1     Invalid
-      Flags : constant UARTFR_Register := This.Periph.UARTFR;
+      Flags : UARTFR_Register renames This.Periph.UARTFR;
    begin
       if Flags.RXFE = False and Flags.RXFF = False then
          return Not_Full;

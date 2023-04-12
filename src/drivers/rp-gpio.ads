@@ -11,12 +11,12 @@ with HAL;                   use HAL;
 with HAL.GPIO;              use HAL.GPIO;
 
 package RP.GPIO
-   with Preelaborate
+   with Preelaborate, SPARK_Mode, Elaborate_Body
 is
    type GPIO_Pin is range 0 .. 29;
    subtype ADC_Pin is GPIO_Pin range 26 .. 29;
 
-   type GPIO_Point is new HAL.GPIO.GPIO_Point with
+   type GPIO_Point is tagged --  new HAL.GPIO.GPIO_Point with
       record
          Pin : GPIO_Pin;
       end record;
@@ -55,26 +55,28 @@ is
    function Enabled return Boolean;
 
    procedure Configure
-      (This      : in out GPIO_Point;
+      (This      : GPIO_Point;
        Mode      : GPIO_Config_Mode;
        Pull      : GPIO_Pull_Mode := Floating;
        Func      : GPIO_Function := SIO;
        Schmitt   : Boolean := False;
        Slew_Fast : Boolean := False;
-       Drive     : GPIO_Drive := Drive_4mA);
+       Drive     : GPIO_Drive := Drive_4mA)
+   with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
    --  In Analog mode, Pull and Func are ignored and set to Floating and HI_Z
 
-   function Get
-      (This : GPIO_Point)
-      return Boolean
-   with Pre => This.Mode = HAL.GPIO.Input;
+   procedure Get
+     (This : GPIO_Point;
+      Result : out Boolean)
+        with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+   --  with Pre => This.Mode = HAL.GPIO.Input;
 
    procedure Enable_Interrupt
-      (This    : in out GPIO_Point;
+      (This    : GPIO_Point;
        Trigger : Interrupt_Triggers);
 
    procedure Disable_Interrupt
-      (This    : in out GPIO_Point;
+      (This    : GPIO_Point;
        Trigger : Interrupt_Triggers);
 
    procedure Acknowledge_Interrupt
@@ -84,50 +86,49 @@ is
    function Interrupt_Status
       (Pin     : GPIO_Pin;
        Trigger : Interrupt_Triggers)
-      return Boolean;
+       return Boolean
+   with Volatile_Function;
 
-   overriding
    function Support
-      (This : GPIO_Point;
-       Capa : HAL.GPIO.Capability)
+      --  (This : GPIO_Point;
+      --   Capa : HAL.GPIO.Capability)
        return Boolean;
 
-   overriding
    function Mode
       (This : GPIO_Point)
-      return HAL.GPIO.GPIO_Mode;
+       return HAL.GPIO.GPIO_Mode
+   with Volatile_Function;
 
-   overriding
    procedure Set_Mode
-      (This : in out GPIO_Point;
-       Mode : HAL.GPIO.GPIO_Config_Mode);
+      (This : GPIO_Point;
+       Mode : HAL.GPIO.GPIO_Config_Mode)
+      with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
 
-   overriding
    function Pull_Resistor
       (This : GPIO_Point)
-      return HAL.GPIO.GPIO_Pull_Resistor;
+       return HAL.GPIO.GPIO_Pull_Resistor
+     with Volatile_Function;
 
-   overriding
    procedure Set_Pull_Resistor
-      (This : in out GPIO_Point;
+      (This : GPIO_Point;
        Pull : HAL.GPIO.GPIO_Pull_Resistor);
 
-   overriding
-   function Set
-      (This : GPIO_Point)
-      return Boolean;
-
-   overriding
    procedure Set
-      (This : in out GPIO_Point);
+     (This : GPIO_Point;
+      Result : out Boolean)
+        with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
 
-   overriding
+   procedure Set
+     (This : GPIO_Point)
+     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+
    procedure Clear
-      (This : in out GPIO_Point);
+      (This : GPIO_Point)
+     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
 
-   overriding
    procedure Toggle
-      (This : in out GPIO_Point);
+      (This : GPIO_Point)
+     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
 
 private
 
@@ -136,7 +137,10 @@ private
    subtype GPIO_Pin_Mask is UInt30;
 
    function Pin_Mask (Pin : GPIO_Pin)
-      return GPIO_Pin_Mask;
+                      return GPIO_Pin_Mask
+     with Pre => 2 ** GPIO_Pin'Pos (Pin) <= 2 ** 30 - 1
+   --  GPIO_Pin'Pos (Pin) < 30
+   ;
 
    type GPIO_CTRL_Register is record
       FUNCSEL : GPIO_Function := HI_Z;
@@ -201,7 +205,7 @@ private
       with Volatile;
 
    IO_BANK_Periph : aliased IO_BANK
-      with Import, Address => IO_BANK0_Base;
+      with Import, Async_Writers, Address => IO_BANK0_Base;
    PADS_BANK_Periph : aliased PADS_BANK
-      with Import, Address => PADS_BANK0_Base;
+      with Import, Async_Writers, Address => PADS_BANK0_Base;
 end RP.GPIO;

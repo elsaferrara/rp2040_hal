@@ -15,23 +15,29 @@ package body RP.RTC is
       (This : in out RTC_Device)
    is
       use RP.Reset;
+      Clock_Frequency : Hertz;
    begin
       RP.Clock.Enable (RP.Clock.RTC);
       Reset_Peripheral (Reset_RTC);
-
+      RP.Clock.Frequency (RP.Clock.RTC, Clock_Frequency);
       --  RP.Clock.Initialize sets up clk_rtc as 46_875 Hz driven by xosc.
       --  Here we configure the RTC's internal divider to generate a 1 Hz
       --  reference.
       RTC_Periph.CLKDIV_M1.CLKDIV_M1 := CLKDIV_M1_CLKDIV_M1_Field
-         (RP.Clock.Frequency (RP.Clock.RTC) - 1);
+        (Clock_Frequency - 1);
 
       This.Resume;
    end Configure;
 
    function Running
-      (This : RTC_Device)
-      return Boolean
-   is (RP.Clock.Enabled (RP.Clock.RTC) and RTC_Periph.CTRL.RTC_ACTIVE);
+     (This : RTC_Device)
+       return Boolean
+   is
+      Enabled : Boolean;
+   begin
+      RP.Clock.Check_Enabled (RP.Clock.RTC, Enabled);
+      return (Enabled and RTC_Periph.CTRL.RTC_ACTIVE);
+   end Running;
 
    procedure Pause
       (This : in out RTC_Device)

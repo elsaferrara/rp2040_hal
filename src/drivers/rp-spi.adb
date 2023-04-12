@@ -63,10 +63,13 @@ package body RP.SPI is
        Baud : Hertz)
    is
       Baud64   : constant UInt64 := UInt64 (Baud);
-      Freq_In  : constant UInt64 := UInt64 (RP.Clock.Frequency (RP.Clock.PERI));
+      Clock_Frequency : Hertz;
+      Freq_In  : UInt64;
       Prescale : UInt64 := 2;
       Postdiv  : UInt64 := 256;
    begin
+      RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
+      Freq_In := UInt64 (Clock_Frequency);
       while Prescale <= 254 loop
          exit when Freq_In < (Prescale + 2) * 256 * Baud64;
          Prescale := Prescale + 2;

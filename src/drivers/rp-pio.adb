@@ -79,9 +79,11 @@ package body RP.PIO is
       (Config    : in out PIO_SM_Config;
        Frequency : Hertz)
    is
-      Div : constant Divider :=
-         Divider (Float (RP.Clock.Frequency (RP.Clock.SYS)) / Float (Frequency));
+      Clock_Frequency : Hertz;
+      Div : Divider;
    begin
+      RP.Clock.Frequency (RP.Clock.SYS, Clock_Frequency);
+      Div := Divider (Float (Clock_Frequency) / Float (Frequency));
       Set_Clock_Divider (Config, Div);
    end Set_Clock_Frequency;
 

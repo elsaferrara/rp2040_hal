@@ -164,7 +164,7 @@ package RP2040_SVD.UART is
       Reserved_9_31 : HAL.UInt23;
    end record
      with Volatile_Full_Access, Object_Size => 32,
-          Bit_Order => System.Low_Order_First;
+     Bit_Order => System.Low_Order_First;
 
    for UARTFR_Register use record
       CTS           at 0 range 0 .. 0;
