@@ -11,7 +11,7 @@ with System;
 with HAL; use HAL;
 
 package RP.UART
-   with Preelaborate, SPARK_Mode, Elaborate_Body
+   with Preelaborate, Elaborate_Body, SPARK_Mode
 is
    subtype UART_Word_Size is Integer range 5 .. 8;
    subtype UART_Stop_Bits is Integer range 1 .. 2;
@@ -47,13 +47,26 @@ is
           Periph : RP2040_SVD.UART.UART_Peripheral;
          Config : UART_Configuration;
       end record
-   with Volatile;
+     with Volatile;
 
-   Configured : Boolean := False with Ghost;
+   --  type UART_Port
+   --     (Num    : UART_Number;
+   --      Periph : not null access RP2040_SVD.UART.UART_Peripheral)
+   --  is tagged record
+   --     Config : UART_Configuration;
+   --  end record;
+
+   procedure Lemma_Div_Pos (A : Hertz; B : Hertz_Baud)
+     with Pre => A >= 0 and B > 0,
+     Post => Float (A) / Float (B) >= 0.0;
+
    procedure Configure
       (This   : in out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
-     with Pre'Class => RP.Clock.Enabled (RP.Clock.PERI)
+     with Pre'Class => Config.Baud < 2 ** 27
+       and then RP.Clock.Test_Frequency > 3_686_400
+       and then RP.Clock.Enabled (RP.Clock.PERI)
+
      --  with Pre => RP.Clock.Frequency (RP.Clock.PERI) > 3_686_400
    ;
 

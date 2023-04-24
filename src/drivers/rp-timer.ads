@@ -6,7 +6,7 @@
 with HAL; use HAL;
 
 package RP.Timer
-   with Preelaborate
+   with Preelaborate, SPARK_Mode
 is
    type Time is new UInt64;
    Ticks_Per_Second : constant := 1_000_000;

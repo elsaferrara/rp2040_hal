@@ -5,7 +5,7 @@
 --
 with RP2040_SVD.TIMER; use RP2040_SVD.TIMER;
 
-package body RP.Timer is
+package body RP.Timer with SPARK_Mode is
    function Clock
       return Time
    is
@@ -33,23 +33,25 @@ package body RP.Timer is
          High := Next_High;
       end if;
 
-      return Time (Shift_Left (UInt64 (High), 32) or UInt64 (Low));
+      return Time ((UInt64 (High)) * (2 ** 32) or UInt64 (Low)); -- Shift_Left
    end Clock;
 
    procedure Busy_Wait_Until (Deadline : Time) is
       DL_High : constant UInt32 :=
-        UInt32 (Shift_Right (Deadline, 32) and 16#FF_FF_FF_FF#);
+        UInt32 ((Deadline - (Deadline mod 2**32))/ 2**32 and 16#FF_FF_FF_FF#);
       DL_Low  : constant UInt32 :=
         UInt32 (Deadline and 16#FF_FF_FF_FF#);
 
       High : UInt32 := TIMER_Periph.TIMERAWH;
+      Low : UInt32;
    begin
       loop
          High := TIMER_Periph.TIMERAWH;
          exit when High >= DL_High;
       end loop;
 
-      while High = DL_High and then TIMER_Periph.TIMERAWL < DL_Low loop
+      Low := TIMER_Periph.TIMERAWL;
+      while High = DL_High and then Low < DL_Low loop
          High := TIMER_Periph.TIMERAWH;
       end loop;
 

@@ -10,10 +10,12 @@ with Ada.Unchecked_Conversion;
 
 package body RP.UART with SPARK_Mode is
 
+   procedure Lemma_Div_Pos (A : Hertz; B : Hertz_Baud) is
+   null;
+
    procedure Configure
       (This   : in out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
-     with SPARK_Mode => Off
    is
       use RP.Reset;
       Word_Length : constant UInt2 := UInt2
@@ -32,11 +34,35 @@ package body RP.UART with SPARK_Mode is
 
       declare
          Clock_Frequency : Hertz;
+         Div_Float : Float range 0.0 .. Float'Last;
+         Int : UInt16;
+         Frac : UInt6;
          Div : UART_Divider;
+         Tmp : Integer;
       begin
          RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
-         Div := UART_Divider
-            (Float (Clock_Frequency) / Float (Config.Baud * 16));
+         pragma Assert (Clock_Frequency >= 0);
+         pragma Assert (Config.Baud > 0);
+         Div_Float := Float (Clock_Frequency) / Float (Config.Baud * 16);
+         Lemma_Div_Pos (Clock_Frequency, Config.Baud * 16);
+         --  pragma Assert (Float (Config.Baud * 16) > 0.0);
+         --  pragma Assert (Float (Clock_Frequency) >= 0.0);
+         pragma Assert (Div_Float >= 0.0);
+         pragma Assert (Div_Float >= Float (Integer'First));
+         Tmp := Integer (Div_Float);
+         if Float (Tmp) > Div_Float then
+            Int := UInt16 (Div_Float) - 1;
+         else
+            Int := UInt16 (Div_Float);
+         end if;
+
+         if Int > 0 then
+            Frac := UInt6 (Div_Float - Float (Int));
+         else
+            Frac := UInt6 (Div_Float);
+         end if;
+
+         Div := Div_Value (Int, Frac);
          This.Periph.UARTIBRD.BAUD_DIVINT := Div_Integer (Div);
          This.Periph.UARTFBRD.BAUD_DIVFRAC := Div_Fraction (Div);
       end;

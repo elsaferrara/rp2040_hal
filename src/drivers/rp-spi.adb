@@ -8,7 +8,7 @@ with RP.Timer;
 with RP.Reset;
 with HAL; use HAL;
 
-package body RP.SPI is
+package body RP.SPI with SPARK_Mode is
    procedure Configure
       (This   : in out SPI_Port;
        Config : SPI_Configuration := Default_SPI_Configuration)
@@ -99,15 +99,18 @@ package body RP.SPI is
       --   0     1    Not_Full    some data in FIFO
       --   1     0    Invalid     cannot be both Empty and Full
       --   1     1    Empty
-      Flags : constant SSPSR_Register := This.Periph.SSPSR;
+
+      Is_TFE : constant Boolean := This.Periph.SSPSR.TFE;
+      Is_TNF : constant Boolean := This.Periph.SSPSR.TNF;
+      Is_BSY : constant Boolean := This.Periph.SSPSR.BSY;
    begin
-      if Flags.TFE = False and Flags.TNF = False then
+      if not Is_TFE and not Is_TNF then
          return Full;
-      elsif Flags.TFE = False and Flags.TNF = True then
+      elsif not Is_TFE and Is_TNF then
          return Not_Full;
-      elsif Flags.BSY then
+      elsif Is_BSY then
          return Busy;
-      elsif Flags.TFE = True and Flags.TNF = True then
+      elsif Is_TFE and Is_TNF then
          return Empty;
       else
          return Invalid;
@@ -123,15 +126,18 @@ package body RP.SPI is
       --   0    1    Not_Full
       --   1    0    Invalid     cannot be both Empty and Full
       --   1    1    Full
-      Flags : constant SSPSR_Register := This.Periph.SSPSR;
+
+      Is_RFF : constant Boolean := This.Periph.SSPSR.RFF;
+      Is_RNE : constant Boolean := This.Periph.SSPSR.RNE;
+      Is_BSY : constant Boolean := This.Periph.SSPSR.BSY;
    begin
-      if Flags.RFF = False and Flags.RNE = False then
+      if not Is_RFF and not Is_RNE then
          return Empty;
-      elsif Flags.BSY then
+      elsif Is_BSY then
          return Busy;
-      elsif Flags.RFF = False and Flags.RNE = True then
+      elsif not Is_RFF and Is_RNE then
          return Not_Full;
-      elsif Flags.RFF = True and Flags.RNE = True then
+      elsif Is_RFF and Is_RNE then
          return Full;
       else
          return Invalid;
@@ -143,7 +149,7 @@ package body RP.SPI is
       return System.Address
    is (This.Periph.SSPDR'Address);
 
-   overriding
+   --  overriding
    function Data_Size
       (This : SPI_Port)
       return SPI_Data_Size
@@ -156,7 +162,7 @@ package body RP.SPI is
       end if;
    end Data_Size;
 
-   overriding
+   --  overriding
    procedure Transmit
       (This    : in out SPI_Port;
        Data    : SPI_Data_8b;
@@ -201,7 +207,7 @@ package body RP.SPI is
       Status := Ok;
    end Transmit;
 
-   overriding
+   --  overriding
    procedure Transmit
       (This    : in out SPI_Port;
        Data    : SPI_Data_16b;
@@ -246,7 +252,7 @@ package body RP.SPI is
       Status := Ok;
    end Transmit;
 
-   overriding
+   --  overriding
    procedure Receive
       (This    : in out SPI_Port;
        Data    : out SPI_Data_8b;
@@ -281,7 +287,7 @@ package body RP.SPI is
       Status := Ok;
    end Receive;
 
-   overriding
+   --  overriding
    procedure Receive
       (This    : in out SPI_Port;
        Data    : out SPI_Data_16b;
@@ -319,53 +325,63 @@ package body RP.SPI is
    procedure Enable_IRQ (This : in out SPI_Port;
                          IRQ  :        SPI_IRQ_Flag)
    is
-      Mask : HAL.UInt32
-        with Address => This.Periph.SSPIMSC'Address,
-        Volatile_Full_Access;
    begin
-      Mask := Mask or IRQ'Enum_Rep;
+      case IRQ is
+         when Receive_Overrun => This.Periph.SSPIMSC.RORIM := True;
+         when Receive_FIFO_Not_Empty => This.Periph.SSPIMSC.RTIM := True;
+         when Receive_FIFO_Half_Full => This.Periph.SSPIMSC.RXIM := True;
+         when Transmit_FIFO_Half_Empty => This.Periph.SSPIMSC.TXIM := True;
+      end case;
    end Enable_IRQ;
 
    procedure Disable_IRQ (This : in out SPI_Port;
                           IRQ  :        SPI_IRQ_Flag)
    is
-      Mask : HAL.UInt32
-        with Address => This.Periph.SSPIMSC'Address,
-        Volatile_Full_Access;
    begin
-      Mask := Mask and (not IRQ'Enum_Rep);
+      case IRQ is
+         when Receive_Overrun => This.Periph.SSPIMSC.RORIM := False;
+         when Receive_FIFO_Not_Empty => This.Periph.SSPIMSC.RTIM := False;
+         when Receive_FIFO_Half_Full => This.Periph.SSPIMSC.RXIM := False;
+         when Transmit_FIFO_Half_Empty => This.Periph.SSPIMSC.TXIM := False;
+      end case;
    end Disable_IRQ;
 
    procedure Clear_IRQ (This : in out SPI_Port;
                         IRQ  :        SPI_IRQ_Flag)
    is
-      Clear : HAL.UInt32
-        with Address => This.Periph.SSPICR'Address,
-        Volatile_Full_Access;
    begin
-      Clear := IRQ'Enum_Rep;
+      case IRQ is
+         when Receive_Overrun => This.Periph.SSPICR.RORIC := True;
+         when Receive_FIFO_Not_Empty => This.Periph.SSPICR.RTIC := True;
+         when Receive_FIFO_Half_Full => null;
+         when Transmit_FIFO_Half_Empty => null;
+      end case;
    end Clear_IRQ;
 
    function Masked_IRQ_Status (This : SPI_Port;
                                IRQ  : SPI_IRQ_Flag)
                                return Boolean
    is
-      Masked_Status : HAL.UInt32
-        with Address => This.Periph.SSPMIS'Address,
-        Volatile_Full_Access;
    begin
-      return (Masked_Status and IRQ'Enum_Rep) /= 0;
+      case IRQ is
+         when Receive_Overrun => return This.Periph.SSPMIS.RORMIS;
+         when Receive_FIFO_Not_Empty => return This.Periph.SSPMIS.RTMIS;
+         when Receive_FIFO_Half_Full => return This.Periph.SSPMIS.RXMIS;
+         when Transmit_FIFO_Half_Empty => return This.Periph.SSPMIS.TXMIS;
+      end case;
    end Masked_IRQ_Status;
 
    function Raw_IRQ_Status (This : SPI_Port;
                             IRQ  : SPI_IRQ_Flag)
                             return Boolean
    is
-      RAW_Status : HAL.UInt32
-        with Address => This.Periph.SSPRIS'Address,
-        Volatile_Full_Access;
    begin
-      return (RAW_Status and IRQ'Enum_Rep) /= 0;
+      case IRQ is
+         when Receive_Overrun => return This.Periph.SSPRIS.RORRIS;
+         when Receive_FIFO_Not_Empty => return This.Periph.SSPRIS.RTRIS;
+         when Receive_FIFO_Half_Full => return This.Periph.SSPRIS.RXRIS;
+         when Transmit_FIFO_Half_Empty => return This.Periph.SSPRIS.TXRIS;
+      end case;
    end Raw_IRQ_Status;
 
 end RP.SPI;

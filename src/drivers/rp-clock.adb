@@ -13,7 +13,17 @@ with RP.Reset;
 package body RP.Clock with SPARK_Mode is
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
                                return CLK_SELECTED_Field
-   is (Shift_Left (1, Natural (SRC)));
+   is (2 ** Natural (SRC)); -- Shift_Left
+
+   function Test_Frequency return Hertz is
+      Temp : Boolean := CLOCKS_Periph.FC0_STATUS.DIED;
+      Temp2 : UInt25 := CLOCKS_Periph.FC0_RESULT.KHZ;
+   begin
+      if Temp then
+         return 0;
+      else return Hertz(Temp2) * 1_000;
+      end if;
+   end Test_Frequency;
 
    procedure Enable_XOSC is
       use RP2040_SVD.XOSC;
@@ -289,7 +299,7 @@ package body RP.Clock with SPARK_Mode is
          Result := 0;
       else
          Tmp2 := CLOCKS_Periph.FC0_RESULT.KHZ;
-         pragma Assert (Tmp2 <= 2**25 - 1);
+         pragma Assert (Tmp2 <= 2**21 - 1);
          F := Hertz (Tmp2) * 1_000;
          if Rounded then
             Result := F;

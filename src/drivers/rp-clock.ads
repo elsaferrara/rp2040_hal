@@ -18,6 +18,8 @@ is
 
    subtype XOSC_Cycles is Natural;
 
+   function Test_Frequency return Hertz;
+
    procedure Initialize
       (XOSC_Frequency     : XOSC_Hertz := 0;
        XOSC_Startup_Delay : XOSC_Cycles := 770_048) --  ~64ms with a 12 MHz crystal

@@ -7,9 +7,10 @@ with HAL.SPI; use HAL.SPI;
 with RP2040_SVD.SPI;
 with RP.Clock;
 with System;
+with RP2040_SVD;
 
 package RP.SPI
-   with Preelaborate
+   with Preelaborate, SPARK_Mode, Elaborate_Body
 is
    subtype SPI_Number is Natural range 0 .. 1;
    type SPI_Port
@@ -18,6 +19,18 @@ is
    is new HAL.SPI.SPI_Port with record
       Blocking : Boolean := True;
    end record;
+
+   --  type Periph_Access is access RP2040_SVD.SPI.SPI_Peripheral;
+
+   --     type SPI_Port
+   --  is tagged -- new HAL.SPI.SPI_Port with
+   --     record
+   --     Num    : SPI_Number := 0;
+   --        Periph : RP2040_SVD.SPI.SPI_Peripheral
+   --          with Address => RP2040_SVD.SPI0_Base;
+   --     Blocking : Boolean := True;
+   --     end record
+   --  with Volatile;
 
    type SPI_Role is (Master, Slave);
    type SPI_Polarity is (Active_Low, Active_High);
@@ -47,7 +60,7 @@ is
    ;
    Clock_Speed_Error : exception;
 
-   overriding
+   --  overriding
    function Data_Size
       (This : SPI_Port)
       return SPI_Data_Size;
@@ -64,28 +77,28 @@ is
       (This : SPI_Port)
       return System.Address;
 
-   overriding
+   --  overriding
    procedure Transmit
       (This    : in out SPI_Port;
        Data    : SPI_Data_8b;
        Status  : out SPI_Status;
        Timeout : Natural := 1000);
 
-   overriding
+   --  overriding
    procedure Transmit
       (This    : in out SPI_Port;
        Data    : SPI_Data_16b;
        Status  : out SPI_Status;
        Timeout : Natural := 1000);
 
-   overriding
+   --  overriding
    procedure Receive
       (This    : in out SPI_Port;
        Data    : out SPI_Data_8b;
        Status  : out SPI_Status;
        Timeout : Natural := 1000);
 
-   overriding
+   --  overriding
    procedure Receive
       (This    : in out SPI_Port;
        Data    : out SPI_Data_16b;
