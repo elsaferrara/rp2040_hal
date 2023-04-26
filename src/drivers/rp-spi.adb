@@ -10,86 +10,113 @@ with HAL; use HAL;
 
 package body RP.SPI with SPARK_Mode is
    procedure Configure
-      (This   : in out SPI_Port;
-       Config : SPI_Configuration := Default_SPI_Configuration)
+     (This   : in out SPI_Port;
+      Config : SPI_Configuration := Default_SPI_Configuration)
    is
-      use RP.Reset;
-   begin
-      RP.Clock.Enable (RP.Clock.PERI);
-      case This.Num is
+      procedure Configure_Inner
+        (This   : in out SPI_Port;
+         Config : SPI_Configuration := Default_SPI_Configuration;
+         Periph : in out SPI_Peripheral)
+      is
+         use RP.Reset;
+      begin
+         RP.Clock.Enable (RP.Clock.PERI);
+         case This.Num is
          when 0 => Reset_Peripheral (Reset_SPI0);
          when 1 => Reset_Peripheral (Reset_SPI1);
-      end case;
+         end case;
 
-      --  clk_peri   := clk_sys
-      --  fSSPCLK    := clk_peri
-      --  fSSPCLKOUT := fSSPCLK / (CPSDVSR * (1 + SCR);
+         --  clk_peri   := clk_sys
+         --  fSSPCLK    := clk_peri
+         --  fSSPCLKOUT := fSSPCLK / (CPSDVSR * (1 + SCR);
 
-      This.Periph.SSPCR0 :=
-         (FRF    => 0,       --  Motorola format
-          SCR    => 0,       --  No divider before Set_Speed is called
-          SPO    => Config.Polarity = Active_High,
-          SPH    => Config.Phase = Falling_Edge,
-          others => <>);
+         Periph.SSPCR0 :=
+           (FRF    => 0,       --  Motorola format
+            SCR    => 0,       --  No divider before Set_Speed is called
+            SPO    => Config.Polarity = Active_High,
+            SPH    => Config.Phase = Falling_Edge,
+            others => <>);
 
-      case Config.Data_Size is
+         case Config.Data_Size is
          when Data_Size_8b =>
-            This.Periph.SSPCR0.DSS := 2#0111#;
+            Periph.SSPCR0.DSS := 2#0111#;
          when Data_Size_16b =>
-            This.Periph.SSPCR0.DSS := 2#1111#;
+            Periph.SSPCR0.DSS := 2#1111#;
+         end case;
+
+         Periph.SSPCR1 :=
+           (MS     => Config.Role = Slave,
+            SSE    => False,
+            LBM    => Config.Loopback,
+            others => <>);
+
+         --  Enable DMA request. Harmless if DMA is not used.
+         Periph.SSPDMACR :=
+           (RXDMAE => True,
+            TXDMAE => True,
+            others => <>);
+
+         This.Set_Speed (Config.Baud);
+
+         This.Blocking := Config.Blocking;
+
+         Periph.SSPCR1.SSE := True;
+      end Configure_Inner;
+   begin
+      case This.Num is
+         when 0 => Configure_Inner (This, Config, SPI0_Periph);
+         when 1 => Configure_Inner (This, Config, SPI1_Periph);
       end case;
-
-      This.Periph.SSPCR1 :=
-         (MS     => Config.Role = Slave,
-          SSE    => False,
-          LBM    => Config.Loopback,
-          others => <>);
-
-      --  Enable DMA request. Harmless if DMA is not used.
-      This.Periph.SSPDMACR :=
-         (RXDMAE => True,
-          TXDMAE => True,
-          others => <>);
-
-      This.Set_Speed (Config.Baud);
-
-      This.Blocking := Config.Blocking;
-
-      This.Periph.SSPCR1.SSE := True;
    end Configure;
 
    procedure Set_Speed
-      (This : in out SPI_Port;
-       Baud : Hertz)
+     (This : SPI_Port;
+      Baud : Hertz)
    is
-      Baud64   : constant UInt64 := UInt64 (Baud);
-      Clock_Frequency : Hertz;
-      Freq_In  : UInt64;
-      Prescale : UInt64 := 2;
-      Postdiv  : UInt64 := 256;
+      procedure Set_Speed_Inner
+        (Baud : Hertz;
+         Periph : in out SPI_Peripheral)
+      is
+         Baud64   : constant UInt64 := UInt64 (Baud);
+         Clock_Frequency : Hertz;
+         Freq_In  : UInt64;
+         Prescale : UInt64 := 2;
+         Postdiv  : UInt64 := 256;
+      begin
+         RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
+         Freq_In := UInt64 (Clock_Frequency);
+         while Prescale <= 254 loop
+            pragma Loop_Variant (Increases => Prescale);
+            pragma Loop_Invariant (Prescale >= 2);
+            exit when Freq_In < (Prescale + 2) * 256 * Baud64;
+            Prescale := Prescale + 2;
+         end loop;
+         if Prescale > 254 then
+            raise Clock_Speed_Error with "PERI frequency too low for requested SPI baud";
+         end if;
+         pragma Assert (Prescale >= 2);
+
+         while Postdiv > 1 loop
+            pragma Loop_Invariant (Prescale > 0);
+            pragma Loop_Invariant (Postdiv > 1);
+            pragma Loop_Invariant (Postdiv - 1 > 0);
+            exit when Freq_In / Prescale / (Postdiv - 1) > Baud64;
+            Postdiv := Postdiv - 1;
+         end loop;
+
+         Periph.SSPCPSR.CPSDVSR := SSPCPSR_CPSDVSR_Field (Prescale);
+         Periph.SSPCR0.SCR := SSPCR0_SCR_Field (Postdiv - 1);
+      end Set_Speed_Inner;
    begin
-      RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
-      Freq_In := UInt64 (Clock_Frequency);
-      while Prescale <= 254 loop
-         exit when Freq_In < (Prescale + 2) * 256 * Baud64;
-         Prescale := Prescale + 2;
-      end loop;
-      if Prescale > 254 then
-         raise Clock_Speed_Error with "PERI frequency too low for requested SPI baud";
-      end if;
-
-      while Postdiv > 1 loop
-         exit when Freq_In / (Prescale * (Postdiv - 1)) > Baud64;
-         Postdiv := Postdiv - 1;
-      end loop;
-
-      This.Periph.SSPCPSR.CPSDVSR := SSPCPSR_CPSDVSR_Field (Prescale);
-      This.Periph.SSPCR0.SCR := SSPCR0_SCR_Field (Postdiv - 1);
+      case This.Num is
+         when 0 => Set_Speed_Inner (Baud, SPI0_Periph);
+         when 1 => Set_Speed_Inner (Baud, SPI1_Periph);
+      end case;
    end Set_Speed;
 
-   function Transmit_Status
-      (This : SPI_Port)
-      return SPI_FIFO_Status
+   procedure Transmit_Status_Inner
+     (Periph : SPI_Peripheral;
+      Result : out SPI_FIFO_Status)
    is
       --  This is a bit dumb, but we want to avoid redefining the whole
       --  SPI_Peripheral record just to change the status registers.
@@ -100,26 +127,37 @@ package body RP.SPI with SPARK_Mode is
       --   1     0    Invalid     cannot be both Empty and Full
       --   1     1    Empty
 
-      Is_TFE : constant Boolean := This.Periph.SSPSR.TFE;
-      Is_TNF : constant Boolean := This.Periph.SSPSR.TNF;
-      Is_BSY : constant Boolean := This.Periph.SSPSR.BSY;
+      Is_TFE : constant Boolean := Periph.SSPSR.TFE;
+      Is_TNF : constant Boolean := Periph.SSPSR.TNF;
+      Is_BSY : constant Boolean := Periph.SSPSR.BSY;
    begin
       if not Is_TFE and not Is_TNF then
-         return Full;
+         Result := Full;
       elsif not Is_TFE and Is_TNF then
-         return Not_Full;
+         Result := Not_Full;
       elsif Is_BSY then
-         return Busy;
+         Result := Busy;
       elsif Is_TFE and Is_TNF then
-         return Empty;
+         Result := Empty;
       else
-         return Invalid;
+         Result := Invalid;
       end if;
+   end Transmit_Status_Inner;
+
+   procedure Transmit_Status
+     (This : SPI_Port;
+      Result : out SPI_FIFO_Status)
+   is
+   begin
+      case This.Num is
+         when 0 => Transmit_Status_Inner (SPI0_Periph, Result);
+         when 1 => Transmit_Status_Inner (SPI1_Periph, Result);
+      end case;
    end Transmit_Status;
 
-   function Receive_Status
-      (This : SPI_Port)
-      return SPI_FIFO_Status
+   procedure Receive_Status_Inner
+     (Periph : SPI_Peripheral;
+      Result : out SPI_FIFO_Status)
    is
       --  RFF  RNE   Returns     Notes
       --   0    0    Empty
@@ -127,260 +165,423 @@ package body RP.SPI with SPARK_Mode is
       --   1    0    Invalid     cannot be both Empty and Full
       --   1    1    Full
 
-      Is_RFF : constant Boolean := This.Periph.SSPSR.RFF;
-      Is_RNE : constant Boolean := This.Periph.SSPSR.RNE;
-      Is_BSY : constant Boolean := This.Periph.SSPSR.BSY;
+      Is_RFF : constant Boolean := Periph.SSPSR.RFF;
+      Is_RNE : constant Boolean := Periph.SSPSR.RNE;
+      Is_BSY : constant Boolean := Periph.SSPSR.BSY;
    begin
       if not Is_RFF and not Is_RNE then
-         return Empty;
+         Result := Empty;
       elsif Is_BSY then
-         return Busy;
+         Result := Busy;
       elsif not Is_RFF and Is_RNE then
-         return Not_Full;
+         Result := Not_Full;
       elsif Is_RFF and Is_RNE then
-         return Full;
+         Result := Full;
       else
-         return Invalid;
+         Result := Invalid;
       end if;
+   end Receive_Status_Inner;
+
+   procedure Receive_Status
+     (This : SPI_Port;
+      Result : out SPI_FIFO_Status)
+   is
+   begin
+      case This.Num is
+         when 0 => Receive_Status_Inner (SPI0_Periph, Result);
+         when 1 => Receive_Status_Inner (SPI1_Periph, Result);
+      end case;
    end Receive_Status;
 
    function FIFO_Address
-      (This : SPI_Port)
-      return System.Address
-   is (This.Periph.SSPDR'Address);
+     (This : SPI_Port)
+       return System.Address
+     with SPARK_Mode => Off
+   is
+      function FIFO_Address_Inner
+        (Periph : SPI_Peripheral)
+         return System.Address
+        with Volatile_Function;
+
+      function FIFO_Address_Inner
+        (Periph : SPI_Peripheral)
+         return System.Address
+      is
+      begin
+         return Periph.SSPDR'Address;
+      end FIFO_Address_Inner;
+   begin
+      case This.Num is
+         when 0 => return FIFO_Address_Inner (SPI0_Periph);
+         when 1 => return FIFO_Address_Inner (SPI1_Periph);
+      end case;
+   end FIFO_Address;
 
    --  overriding
-   function Data_Size
-      (This : SPI_Port)
-      return SPI_Data_Size
+   procedure Data_Size
+     (This : SPI_Port;
+      Result : out SPI_Data_Size)
    is
+      procedure Data_Size_Inner
+        (Periph : SPI_Peripheral;
+         Result : out SPI_Data_Size)
+      is
+         DSS : SSPCR0_DSS_Field := Periph.SSPCR0.DSS;
+      begin
+         if DSS = 2#1111# then
+            Result := Data_Size_16b;
+         else
+            Result := Data_Size_8b;
+         end if;
+      end Data_Size_Inner;
    begin
-      if This.Periph.SSPCR0.DSS = 2#1111# then
-         return Data_Size_16b;
-      else
-         return Data_Size_8b;
-      end if;
+      case This.Num is
+         when 0 => Data_Size_Inner (SPI0_Periph, Result);
+         when 1 => Data_Size_Inner (SPI1_Periph, Result);
+      end case;
    end Data_Size;
 
    --  overriding
    procedure Transmit
-      (This    : in out SPI_Port;
-       Data    : SPI_Data_8b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
+     (This    : SPI_Port;
+      Data    : SPI_Data_8b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
    is
-      use type RP.Timer.Time;
-      Deadline : RP.Timer.Time;
-      FIFO     : SPI_FIFO_Status;
+      procedure Transmit_Inner
+        (This    : SPI_Port;
+         Data    : SPI_Data_8b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+      is
+         use type RP.Timer.Time;
+         Deadline : RP.Timer.Time with Relaxed_Initialization;
+         FIFO     : SPI_FIFO_Status;
+      begin
+         if Timeout > 0 then
+            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+         end if;
+
+         for D of Data loop
+            loop
+               Transmit_Status_Inner (Periph, FIFO);
+               exit when FIFO = Empty or FIFO = Not_Full;
+
+               if FIFO = Invalid then
+                  Status := Err_Error;
+                  return;
+               end if;
+
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+            Periph.SSPDR.DATA := SSPDR_DATA_Field (D);
+         end loop;
+
+         if This.Blocking then
+            loop
+               Transmit_Status_Inner (Periph, FIFO);
+               exit when FIFO = Empty;
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+         end if;
+
+         Status := Ok;
+      end Transmit_Inner;
    begin
-      if Timeout > 0 then
-         Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
-      end if;
-
-      for D of Data loop
-         loop
-            FIFO := Transmit_Status (This);
-            exit when FIFO = Empty or FIFO = Not_Full;
-
-            if FIFO = Invalid then
-               Status := Err_Error;
-               return;
-            end if;
-
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
-         end loop;
-         This.Periph.SSPDR.DATA := SSPDR_DATA_Field (D);
-      end loop;
-
-      if This.Blocking then
-         while This.Transmit_Status /= Empty loop
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
-         end loop;
-      end if;
-
-      Status := Ok;
+      case This.Num is
+         when 0 => Transmit_Inner (This, Data, Status, Timeout, SPI0_Periph);
+         when 1 => Transmit_Inner (This, Data, Status, Timeout, SPI1_Periph);
+      end case;
    end Transmit;
 
    --  overriding
    procedure Transmit
-      (This    : in out SPI_Port;
-       Data    : SPI_Data_16b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
+     (This    : SPI_Port;
+      Data    : SPI_Data_16b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
    is
-      use type RP.Timer.Time;
-      Deadline : RP.Timer.Time;
-      FIFO     : SPI_FIFO_Status;
+      procedure Transmit_Inner
+        (This    : SPI_Port;
+         Data    : SPI_Data_16b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+      is
+         use type RP.Timer.Time;
+         Deadline : RP.Timer.Time with Relaxed_Initialization;
+         FIFO     : SPI_FIFO_Status;
+      begin
+         if Timeout > 0 then
+            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+         end if;
+
+         for D of Data loop
+            loop
+               Transmit_Status_Inner (Periph, FIFO);
+               exit when FIFO = Empty or FIFO = Not_Full;
+
+               if FIFO = Invalid then
+                  Status := Err_Error;
+                  return;
+               end if;
+
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+            Periph.SSPDR.DATA := D;
+         end loop;
+
+         if This.Blocking then
+            loop
+               Transmit_Status_Inner (Periph, FIFO);
+               exit when FIFO = Empty;
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+         end if;
+
+         Status := Ok;
+      end Transmit_Inner;
    begin
-      if Timeout > 0 then
-         Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
-      end if;
-
-      for D of Data loop
-         loop
-            FIFO := Transmit_Status (This);
-            exit when FIFO = Empty or FIFO = Not_Full;
-
-            if FIFO = Invalid then
-               Status := Err_Error;
-               return;
-            end if;
-
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
-         end loop;
-         This.Periph.SSPDR.DATA := D;
-      end loop;
-
-      if This.Blocking then
-         while This.Transmit_Status /= Empty loop
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
-         end loop;
-      end if;
-
-      Status := Ok;
+      case This.Num is
+         when 0 => Transmit_Inner (This, Data, Status, Timeout, SPI0_Periph);
+         when 1 => Transmit_Inner (This, Data, Status, Timeout, SPI1_Periph);
+      end case;
    end Transmit;
 
    --  overriding
    procedure Receive
-      (This    : in out SPI_Port;
-       Data    : out SPI_Data_8b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
+     (This    : SPI_Port;
+      Data    : out SPI_Data_8b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
    is
-      use type RP.Timer.Time;
-      Deadline : RP.Timer.Time;
-      FIFO     : SPI_FIFO_Status;
-   begin
-      if Timeout > 0 then
-         Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
-      end if;
+            procedure Receive_Inner
+        (Data    : out SPI_Data_8b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+        with Relaxed_Initialization => Data,
+   Post => (if Status = Ok then Data'Initialized);
 
-      for I in Data'Range loop
-         loop
-            FIFO := Receive_Status (This);
-            exit when FIFO = Not_Full or FIFO = Full;
+      procedure Receive_Inner
+        (Data    : out SPI_Data_8b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+      is
+         use type RP.Timer.Time;
+         Deadline : RP.Timer.Time with Relaxed_Initialization;
+         FIFO     : SPI_FIFO_Status;
+         Periph_Data : UInt16;
+      begin
+         if Timeout > 0 then
+            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+         end if;
 
-            if FIFO = Invalid then
-               Status := Err_Error;
-               return;
-            end if;
+         for I in Data'Range loop
+            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data(J)'Initialized);
+            loop
+               Receive_Status_Inner (Periph, FIFO);
+               exit when FIFO = Not_Full or FIFO = Full;
 
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
+               if FIFO = Invalid then
+                  Status := Err_Error;
+                  return;
+               end if;
+
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+            Periph_Data := Periph.SSPDR.DATA;
+            Data (I) := UInt8 (Periph_Data and 16#00ff#);
          end loop;
-         Data (I) := UInt8 (This.Periph.SSPDR.DATA);
-      end loop;
-      Status := Ok;
+         Status := Ok;
+      end Receive_Inner;
+   begin
+      case This.Num is
+         when 0 => Receive_Inner (Data, Status, Timeout, SPI0_Periph);
+         when 1 => Receive_Inner (Data, Status, Timeout, SPI1_Periph);
+      end case;
    end Receive;
 
    --  overriding
    procedure Receive
-      (This    : in out SPI_Port;
-       Data    : out SPI_Data_16b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
+     (This    : SPI_Port;
+      Data    : out SPI_Data_16b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
    is
-      use type RP.Timer.Time;
-      Deadline : RP.Timer.Time;
-      FIFO     : SPI_FIFO_Status;
-   begin
-      if Timeout > 0 then
-         Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
-      end if;
 
-      for I in Data'Range loop
-         loop
-            FIFO := Receive_Status (This);
-            exit when FIFO = Not_Full or FIFO = Full;
+            procedure Receive_Inner
+        (Data    : out SPI_Data_16b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+     with Relaxed_Initialization => Data,
+   Post => (if Status = Ok then Data'Initialized);
 
-            if FIFO = Invalid then
-               Status := Err_Error;
-               return;
-            end if;
+      procedure Receive_Inner
+        (Data    : out SPI_Data_16b;
+         Status  : out SPI_Status;
+         Timeout : Natural := 1000;
+         Periph : in out SPI_Peripheral)
+      is
+         use type RP.Timer.Time;
+         Deadline : RP.Timer.Time with Relaxed_Initialization;
+         FIFO     : SPI_FIFO_Status;
+      begin
+         if Timeout > 0 then
+            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+         end if;
 
-            if Timeout > 0 and then RP.Timer.Clock >= Deadline then
-               Status := Err_Timeout;
-               return;
-            end if;
+         for I in Data'Range loop
+            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data(J)'Initialized);
+            loop
+               Receive_Status_Inner (Periph, FIFO);
+               exit when FIFO = Not_Full or FIFO = Full;
+
+               if FIFO = Invalid then
+                  Status := Err_Error;
+                  return;
+               end if;
+
+               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  Status := Err_Timeout;
+                  return;
+               end if;
+            end loop;
+            Data (I) := UInt16 (Periph.SSPDR.DATA);
          end loop;
-         Data (I) := UInt16 (This.Periph.SSPDR.DATA);
-      end loop;
-      Status := Ok;
+         Status := Ok;
+      end Receive_Inner;
+   begin
+      case This.Num is
+         when 0 => Receive_Inner (Data, Status, Timeout, SPI0_Periph);
+         when 1 => Receive_Inner (Data, Status, Timeout, SPI1_Periph);
+      end case;
    end Receive;
 
-   procedure Enable_IRQ (This : in out SPI_Port;
+   procedure Enable_IRQ (This :        SPI_Port;
                          IRQ  :        SPI_IRQ_Flag)
    is
+      procedure Enable_IRQ_Inner (IRQ  :        SPI_IRQ_Flag;
+                                  Periph : in out SPI_Peripheral)
+      is
+      begin
+         case IRQ is
+         when Receive_Overrun => Periph.SSPIMSC.RORIM := True;
+         when Receive_FIFO_Not_Empty => Periph.SSPIMSC.RTIM := True;
+         when Receive_FIFO_Half_Full => Periph.SSPIMSC.RXIM := True;
+         when Transmit_FIFO_Half_Empty => Periph.SSPIMSC.TXIM := True;
+         end case;
+      end Enable_IRQ_Inner;
    begin
-      case IRQ is
-         when Receive_Overrun => This.Periph.SSPIMSC.RORIM := True;
-         when Receive_FIFO_Not_Empty => This.Periph.SSPIMSC.RTIM := True;
-         when Receive_FIFO_Half_Full => This.Periph.SSPIMSC.RXIM := True;
-         when Transmit_FIFO_Half_Empty => This.Periph.SSPIMSC.TXIM := True;
+      case This.Num is
+         when 0 => Enable_IRQ_Inner (IRQ, SPI0_Periph);
+         when 1 => Enable_IRQ_Inner (IRQ, SPI1_Periph);
       end case;
    end Enable_IRQ;
 
-   procedure Disable_IRQ (This : in out SPI_Port;
+   procedure Disable_IRQ (This :        SPI_Port;
                           IRQ  :        SPI_IRQ_Flag)
    is
+      procedure Disable_IRQ_Inner (IRQ  :        SPI_IRQ_Flag;
+                                   Periph : in out SPI_Peripheral)
+      is
+      begin
+         case IRQ is
+         when Receive_Overrun => Periph.SSPIMSC.RORIM := False;
+         when Receive_FIFO_Not_Empty => Periph.SSPIMSC.RTIM := False;
+         when Receive_FIFO_Half_Full => Periph.SSPIMSC.RXIM := False;
+         when Transmit_FIFO_Half_Empty => Periph.SSPIMSC.TXIM := False;
+         end case;
+      end Disable_IRQ_Inner;
    begin
-      case IRQ is
-         when Receive_Overrun => This.Periph.SSPIMSC.RORIM := False;
-         when Receive_FIFO_Not_Empty => This.Periph.SSPIMSC.RTIM := False;
-         when Receive_FIFO_Half_Full => This.Periph.SSPIMSC.RXIM := False;
-         when Transmit_FIFO_Half_Empty => This.Periph.SSPIMSC.TXIM := False;
+      case This.Num is
+         when 0 => Disable_IRQ_Inner (IRQ, SPI0_Periph);
+         when 1 => Disable_IRQ_Inner (IRQ, SPI1_Periph);
       end case;
    end Disable_IRQ;
 
-   procedure Clear_IRQ (This : in out SPI_Port;
+   procedure Clear_IRQ (This :        SPI_Port;
                         IRQ  :        SPI_IRQ_Flag)
    is
-   begin
-      case IRQ is
-         when Receive_Overrun => This.Periph.SSPICR.RORIC := True;
-         when Receive_FIFO_Not_Empty => This.Periph.SSPICR.RTIC := True;
+      procedure Clear_IRQ_Inner (IRQ  :        SPI_IRQ_Flag;
+                                 Periph : in out SPI_Peripheral)
+      is
+      begin
+         case IRQ is
+         when Receive_Overrun => Periph.SSPICR.RORIC := True;
+         when Receive_FIFO_Not_Empty => Periph.SSPICR.RTIC := True;
          when Receive_FIFO_Half_Full => null;
          when Transmit_FIFO_Half_Empty => null;
+         end case;
+      end Clear_IRQ_Inner;
+   begin
+      case This.Num is
+         when 0 => Clear_IRQ_Inner (IRQ, SPI0_Periph);
+         when 1 => Clear_IRQ_Inner (IRQ, SPI1_Periph);
       end case;
    end Clear_IRQ;
 
-   function Masked_IRQ_Status (This : SPI_Port;
-                               IRQ  : SPI_IRQ_Flag)
-                               return Boolean
+   procedure Masked_IRQ_Status (This : SPI_Port;
+                                IRQ  : SPI_IRQ_Flag;
+                                Result : out Boolean)
    is
+      procedure Masked_IRQ_Status_Inner (IRQ  : SPI_IRQ_Flag;
+                                         Periph : SPI_Peripheral;
+                                         Result : out Boolean)
+      is
+      begin
+         case IRQ is
+         when Receive_Overrun => Result := Periph.SSPMIS.RORMIS;
+         when Receive_FIFO_Not_Empty => Result := Periph.SSPMIS.RTMIS;
+         when Receive_FIFO_Half_Full => Result := Periph.SSPMIS.RXMIS;
+         when Transmit_FIFO_Half_Empty => Result := Periph.SSPMIS.TXMIS;
+         end case;
+      end Masked_IRQ_Status_Inner;
    begin
-      case IRQ is
-         when Receive_Overrun => return This.Periph.SSPMIS.RORMIS;
-         when Receive_FIFO_Not_Empty => return This.Periph.SSPMIS.RTMIS;
-         when Receive_FIFO_Half_Full => return This.Periph.SSPMIS.RXMIS;
-         when Transmit_FIFO_Half_Empty => return This.Periph.SSPMIS.TXMIS;
+      case This.Num is
+         when 0 => Masked_IRQ_Status_Inner (IRQ, SPI0_Periph, Result);
+         when 1 => Masked_IRQ_Status_Inner (IRQ, SPI1_Periph, Result);
       end case;
    end Masked_IRQ_Status;
 
-   function Raw_IRQ_Status (This : SPI_Port;
-                            IRQ  : SPI_IRQ_Flag)
-                            return Boolean
+   procedure Raw_IRQ_Status (This : SPI_Port;
+                             IRQ  : SPI_IRQ_Flag;
+                             Result : out Boolean)
    is
+      procedure Raw_IRQ_Status_Inner (IRQ  : SPI_IRQ_Flag;
+                                      Periph : SPI_Peripheral;
+                                      Result : out Boolean)
+      is
+      begin
+         case IRQ is
+         when Receive_Overrun => Result := Periph.SSPRIS.RORRIS;
+         when Receive_FIFO_Not_Empty => Result := Periph.SSPRIS.RTRIS;
+         when Receive_FIFO_Half_Full => Result := Periph.SSPRIS.RXRIS;
+         when Transmit_FIFO_Half_Empty => Result := Periph.SSPRIS.TXRIS;
+         end case;
+      end Raw_IRQ_Status_Inner;
    begin
-      case IRQ is
-         when Receive_Overrun => return This.Periph.SSPRIS.RORRIS;
-         when Receive_FIFO_Not_Empty => return This.Periph.SSPRIS.RTRIS;
-         when Receive_FIFO_Half_Full => return This.Periph.SSPRIS.RXRIS;
-         when Transmit_FIFO_Half_Empty => return This.Periph.SSPRIS.TXRIS;
+      case This.Num is
+         when 0 => Raw_IRQ_Status_Inner (IRQ, SPI0_Periph, Result);
+         when 1 => Raw_IRQ_Status_Inner (IRQ, SPI1_Periph, Result);
       end case;
    end Raw_IRQ_Status;
 

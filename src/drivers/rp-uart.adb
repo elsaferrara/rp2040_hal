@@ -46,13 +46,12 @@ package body RP.UART with SPARK_Mode is
             pragma Assert (Int >= 0);
             pragma Assert (Int <= 2 ** 16 - 1);
             Periph.UARTIBRD.BAUD_DIVINT := UInt16 (Int);
-            --  pragma Assert (Remainder < (Config.Baud * 16));
-            --  pragma Assert (Multiple <= 2 ** 6);
-            --  pragma Assert (Multiple /= 0);
-            --  pragma Assert (Remainder / (Config.Baud * 16) < 1);
-            --  pragma Assert (Remainder / (Config.Baud * 16) * Multiple < Multiple);
-            --  pragma Assert (((Long_Long_Integer (Remainder) * Long_Long_Integer (Multiple)) / Long_Long_Integer (Config.Baud * 16)) <= Long_Long_Integer (Multiple));
-            Periph.UARTFBRD.BAUD_DIVFRAC :=
+            pragma Assert (Remainder < (Config.Baud * 16));
+            pragma Assert (Multiple <= 2 ** 6);
+            pragma Assert (Multiple /= 0);
+            pragma Assert (Remainder / (Config.Baud * 16) < 1);
+            pragma Assert (Remainder / (Config.Baud * 16) * Multiple < Multiple);
+           Periph.UARTFBRD.BAUD_DIVFRAC :=
               UInt6 ((Long_Long_Integer (Remainder) * Long_Long_Integer (Multiple))
                      / Long_Long_Integer (Config.Baud * 16));
          end;
@@ -128,7 +127,7 @@ package body RP.UART with SPARK_Mode is
    end Frame_Time;
 
    procedure Send_Break
-     (This     : in out UART_Port;
+     (This     : UART_Port;
       Delays   : not null HAL.Time.Any_Delays;
       Duration : Microseconds;
       Start    : Boolean := True)
@@ -140,13 +139,13 @@ package body RP.UART with SPARK_Mode is
          Start    : Boolean := True;
          Periph : in out UART_Peripheral)
       is
-         Transmit_Status : UART_FIFO_Status;
+         Status : UART_FIFO_Status;
          Symbol_Time : Microseconds;
       begin
          --  Wait for any in progress transmission to complete before setting up a break
          loop
-            Transmit_Status := This.Transmit_Status;
-            exit when Transmit_Status = Empty;
+            Transmit_Status_Inner (Periph, Status);
+            exit when Status = Empty;
          end loop;
 
          if Start then
@@ -164,18 +163,9 @@ package body RP.UART with SPARK_Mode is
       end case;
    end Send_Break;
 
-   function Transmit_Status
-     (This : UART_Port)
-      return UART_FIFO_Status
-   is
-      function Transmit_Status_Inner
-        (Periph : UART_Peripheral)
-         return UART_FIFO_Status
-        with Volatile_Function;
-
-      function Transmit_Status_Inner
-        (Periph : UART_Peripheral)
-         return UART_FIFO_Status
+      procedure Transmit_Status_Inner
+        (Periph : UART_Peripheral;
+        Result : out UART_FIFO_Status)
       is
          --  TXFE TXFF
          --  0    0     Not_Full
@@ -187,38 +177,33 @@ package body RP.UART with SPARK_Mode is
          Is_BUSY : constant Boolean := Periph.UARTFR.BUSY;
       begin
          if not Is_TXFE and not Is_TXFF then
-            return Not_Full;
+            Result := Not_Full;
          elsif not Is_TXFE and Is_TXFF then
-            return Full;
+            Result := Full;
          elsif Is_BUSY then
-            return Busy;
+            Result := Busy;
          elsif Is_TXFE and not Is_TXFF then
-            return Empty;
+            Result := Empty;
          else
-            return Invalid;
+            Result := Invalid;
          end if;
       end Transmit_Status_Inner;
-      Result : UART_FIFO_Status;
+
+   procedure Transmit_Status
+     (This : UART_Port;
+      Result : out UART_FIFO_Status)
+   is
+
    begin
       case This.Num is
-         when 0 => Result := Transmit_Status_Inner (UART0_Periph);
-         when 1 => Result :=  Transmit_Status_Inner (UART1_Periph);
+         when 0 => Transmit_Status_Inner (UART0_Periph, Result);
+         when 1 => Transmit_Status_Inner (UART1_Periph, Result);
       end case;
-      return Result;
    end Transmit_Status;
 
-   function Receive_Status
-     (This : UART_Port)
-      return UART_FIFO_Status
-   is
-      function Receive_Status_Inner
-        (Periph : UART_Peripheral)
-         return UART_FIFO_Status
-        with Volatile_Function;
-
-      function Receive_Status_Inner
-        (Periph : UART_Peripheral)
-         return UART_FIFO_Status
+   procedure Receive_Status_Inner
+        (Periph : UART_Peripheral;
+      Result : out UART_FIFO_Status)
       is
          --  RXFE RXFF
          --  0    0     Not_Full
@@ -230,30 +215,37 @@ package body RP.UART with SPARK_Mode is
          Is_RXFF : constant Boolean := Flags.RXFF;
       begin
          if not Is_RXFE and not Is_RXFF then
-            return Not_Full;
+            Result := Not_Full;
          elsif not Is_RXFE and Is_RXFF then
-            return Full;
+            Result := Full;
          elsif Is_RXFE and not Is_RXFF then
-            return Empty;
+            Result := Empty;
          else
-            return Invalid;
+            Result := Invalid;
          end if;
       end Receive_Status_Inner;
-      Result : UART_FIFO_Status;
+
+   procedure Receive_Status
+      (This : UART_Port;
+      Result : out UART_FIFO_Status)
+   is
    begin
       case This.Num is
-         when 0 => Result := Receive_Status_Inner (UART0_Periph);
-         when 1 => Result := Receive_Status_Inner (UART1_Periph);
+         when 0 => Receive_Status_Inner (UART0_Periph, Result);
+         when 1 => Receive_Status_Inner (UART1_Periph, Result);
       end case;
-      return Result;
    end Receive_Status;
-
 
    function FIFO_Address
      (This : UART_Port)
       return System.Address
      with SPARK_Mode => Off
    is
+            function FIFO_Address_Inner
+        (This : UART_Port;
+         Periph : UART_Peripheral)
+         return System.Address
+        with Volatile_Function;
       function FIFO_Address_Inner
         (This : UART_Port;
          Periph : UART_Peripheral)
@@ -282,14 +274,13 @@ package body RP.UART with SPARK_Mode is
 
    --  overriding
    procedure Transmit
-     (This    : in out UART_Port;
+     (This    : UART_Port;
       Data    : UART_Data_8b;
       Status  : out UART_Status;
       Timeout : Natural := 1000)
    is
       procedure Transmit_Inner
-        (This    : UART_Port;
-         Data    : UART_Data_8b;
+        (Data    : UART_Data_8b;
          Status  : out UART_Status;
          Timeout : Natural := 1000;
          Periph : in out UART_Peripheral)
@@ -303,7 +294,7 @@ package body RP.UART with SPARK_Mode is
          end if;
          for D of Data loop
             loop
-               FIFO := Transmit_Status (This);
+               Transmit_Status_Inner (Periph, FIFO);
                exit when FIFO = Empty or FIFO = Not_Full or FIFO = Busy;
                if FIFO = Invalid then
                   Status := Err_Error;
@@ -321,15 +312,15 @@ package body RP.UART with SPARK_Mode is
       end Transmit_Inner;
    begin
       case This.Num is
-         when 0 => Transmit_Inner (This, Data, Status, Timeout, UART0_Periph);
-         when 1 => Transmit_Inner (This, Data, Status, Timeout, UART1_Periph);
+         when 0 => Transmit_Inner (Data, Status, Timeout, UART0_Periph);
+         when 1 => Transmit_Inner (Data, Status, Timeout, UART1_Periph);
       end case;
    end Transmit;
 
    DR       : UARTDR_Register;
    --  overriding
    procedure Receive
-     (This    : in out UART_Port;
+     (This    : UART_Port;
       Data    : out UART_Data_8b;
       Status  : out UART_Status;
       Timeout : Natural := 1000)
@@ -367,7 +358,7 @@ package body RP.UART with SPARK_Mode is
             Enable_FIFOs := This.Config.Enable_FIFOs;
             if Enable_FIFOs then
                loop
-                  FIFO := Receive_Status (This);
+                  Receive_Status_Inner (Periph, FIFO);
                   exit when FIFO = Not_Full or FIFO = Full;
                   if FIFO = Invalid then
                      Status := Err_Error;
@@ -481,7 +472,7 @@ package body RP.UART with SPARK_Mode is
       end if;
    end Div_Value;
 
-   procedure Set_FIFO_IRQ_Level (This : in out UART_Port;
+   procedure Set_FIFO_IRQ_Level (This :        UART_Port;
                                  RX   :        FIFO_IRQ_Level;
                                  TX   :        FIFO_IRQ_Level)
    is
@@ -501,7 +492,7 @@ package body RP.UART with SPARK_Mode is
       end case;
    end Set_FIFO_IRQ_Level;
 
-   procedure Enable_IRQ (This : in out UART_Port;
+   procedure Enable_IRQ (This :        UART_Port;
                          IRQ  :        UART_IRQ_Flag)
    is
       procedure Enable_IRQ_Inner (IRQ  :        UART_IRQ_Flag;
@@ -529,7 +520,7 @@ package body RP.UART with SPARK_Mode is
       end case;
    end Enable_IRQ;
 
-   procedure Disable_IRQ (This : in out UART_Port;
+   procedure Disable_IRQ (This :        UART_Port;
                           IRQ  :        UART_IRQ_Flag)
    is
       procedure Disable_IRQ_Inner (IRQ  :        UART_IRQ_Flag;
@@ -558,7 +549,7 @@ package body RP.UART with SPARK_Mode is
    end Disable_IRQ;
 
 
-   procedure Clear_IRQ (This : in out UART_Port;
+   procedure Clear_IRQ (This :        UART_Port;
                         IRQ  :        UART_IRQ_Flag)
    is
       procedure Clear_IRQ_Inner (IRQ  :        UART_IRQ_Flag;
@@ -608,73 +599,63 @@ package body RP.UART with SPARK_Mode is
       end case;
    end Clear_IRQ;
 
-   function Masked_IRQ_Status (This : UART_Port;
-                               IRQ  : UART_IRQ_Flag)
-                               return Boolean
+   procedure Masked_IRQ_Status (This : UART_Port;
+                               IRQ  : UART_IRQ_Flag;
+                               Result : out Boolean)
    is
-      function Masked_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
-                                        Periph : UART_Peripheral)
-                                                 return Boolean
-        with Volatile_Function;
-
-      function Masked_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
-                                        Periph : UART_Peripheral)
-                                           return Boolean
+      procedure Masked_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
+                                        Periph : UART_Peripheral;
+                                        Result : out Boolean)
       is
       begin
          case IRQ is
-         when Modem_RI => return Periph.UARTMIS.RIMMIS;
-         when Modem_CTS => return Periph.UARTMIS.CTSMMIS;
-         when Modem_DCD => return Periph.UARTMIS.DCDMMIS;
-         when Modem_DSR => return Periph.UARTMIS.DSRMMIS;
-         when Receive => return Periph.UARTMIS.RXMIS;
-         when Transmit => return Periph.UARTMIS.TXMIS;
-         when Receive_Timeout => return Periph.UARTMIS.RTMIS;
-         when Framing_Error => return Periph.UARTMIS.FEMIS ;
-         when Parity_Error => return Periph.UARTMIS.PEMIS;
-         when Break_Error => return Periph.UARTMIS.BEMIS;
-         when Overrun_Error => return Periph.UARTMIS.OEMIS;
+         when Modem_RI => Result := Periph.UARTMIS.RIMMIS;
+         when Modem_CTS => Result := Periph.UARTMIS.CTSMMIS;
+         when Modem_DCD => Result := Periph.UARTMIS.DCDMMIS;
+         when Modem_DSR => Result := Periph.UARTMIS.DSRMMIS;
+         when Receive => Result := Periph.UARTMIS.RXMIS;
+         when Transmit => Result := Periph.UARTMIS.TXMIS;
+         when Receive_Timeout => Result := Periph.UARTMIS.RTMIS;
+         when Framing_Error => Result := Periph.UARTMIS.FEMIS ;
+         when Parity_Error => Result := Periph.UARTMIS.PEMIS;
+         when Break_Error => Result := Periph.UARTMIS.BEMIS;
+         when Overrun_Error =>  Result := Periph.UARTMIS.OEMIS;
          end case;
       end Masked_IRQ_Status_Inner;
    begin
       case This.Num is
-         when 0 => return Masked_IRQ_Status_Inner (IRQ, UART0_Periph);
-         when 1 => return Masked_IRQ_Status_Inner (IRQ, UART1_Periph);
+         when 0 => Masked_IRQ_Status_Inner (IRQ, UART0_Periph, Result);
+         when 1 => Masked_IRQ_Status_Inner (IRQ, UART1_Periph, Result);
       end case;
    end Masked_IRQ_Status;
 
-   function Raw_IRQ_Status (This : UART_Port;
-                            IRQ  : UART_IRQ_Flag)
-                            return Boolean
+   procedure Raw_IRQ_Status (This : UART_Port;
+                            IRQ  : UART_IRQ_Flag;
+                            Result : out Boolean)
    is
-      function Raw_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
-                                     Periph : UART_Peripheral)
-                                     return Boolean
-        with Volatile_Function;
-
-      function Raw_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
-                                     Periph : UART_Peripheral)
-                                        return Boolean
+      procedure Raw_IRQ_Status_Inner (IRQ  : UART_IRQ_Flag;
+                                     Periph : UART_Peripheral;
+                                     Result : out Boolean)
       is
       begin
          case IRQ is
-         when Modem_RI => return Periph.UARTRIS.RIRMIS;
-         when Modem_CTS => return Periph.UARTRIS.CTSRMIS;
-         when Modem_DCD => return Periph.UARTRIS.DCDRMIS;
-         when Modem_DSR => return Periph.UARTRIS.DSRRMIS;
-         when Receive => return Periph.UARTRIS.RXRIS;
-         when Transmit => return Periph.UARTRIS.TXRIS;
-         when Receive_Timeout => return Periph.UARTRIS.RTRIS;
-         when Framing_Error => return Periph.UARTRIS.FERIS;
-         when Parity_Error => return Periph.UARTRIS.PERIS;
-         when Break_Error => return Periph.UARTRIS.BERIS;
-         when Overrun_Error => return Periph.UARTRIS.OERIS;
+         when Modem_RI => Result := Periph.UARTRIS.RIRMIS;
+         when Modem_CTS => Result := Periph.UARTRIS.CTSRMIS;
+         when Modem_DCD => Result := Periph.UARTRIS.DCDRMIS;
+         when Modem_DSR => Result := Periph.UARTRIS.DSRRMIS;
+         when Receive => Result := Periph.UARTRIS.RXRIS;
+         when Transmit => Result := Periph.UARTRIS.TXRIS;
+         when Receive_Timeout => Result := Periph.UARTRIS.RTRIS;
+         when Framing_Error => Result := Periph.UARTRIS.FERIS;
+         when Parity_Error => Result := Periph.UARTRIS.PERIS;
+         when Break_Error => Result := Periph.UARTRIS.BERIS;
+         when Overrun_Error => Result := Periph.UARTRIS.OERIS;
          end case;
       end Raw_IRQ_Status_Inner;
    begin
       case This.Num is
-         when 0 => return Raw_IRQ_Status_Inner (IRQ, UART0_Periph);
-         when 1 => return Raw_IRQ_Status_Inner (IRQ, UART1_Periph);
+         when 0 => Raw_IRQ_Status_Inner (IRQ, UART0_Periph, Result);
+         when 1 => Raw_IRQ_Status_Inner (IRQ, UART1_Periph, Result);
       end case;
    end Raw_IRQ_Status;
 

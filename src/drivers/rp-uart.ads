@@ -60,10 +60,6 @@ is
       (This   : in out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
      with Pre'Class => Config.Baud < 2 ** 27
-       --  and then RP.Clock.Frequency > 3_686_400
-       --  and then RP.Clock.Enabled (RP.Clock.PERI)
-
-     --  with Pre => RP.Clock.Frequency (RP.Clock.PERI) > 3_686_400
    ;
 
    --  If parity is enabled, the parity bit may be forced high using this
@@ -94,18 +90,26 @@ is
    --  cannot be shorter. If Start = True, an additional delay of one bit
    --  period will be added before the break.
    procedure Send_Break
-      (This     : in out UART_Port;
-       Delays   : not null HAL.Time.Any_Delays;
-       Duration : Microseconds;
-       Start    : Boolean := True);
+     (This     : UART_Port;
+      Delays   : not null HAL.Time.Any_Delays;
+      Duration : Microseconds;
+      Start    : Boolean := True);
 
-   function Transmit_Status
-      (This : UART_Port)
-      return UART_FIFO_Status;
+   procedure Transmit_Status_Inner
+     (Periph : UART_Peripheral;
+      Result : out UART_FIFO_Status);
 
-   function Receive_Status
-      (This : UART_Port)
-      return UART_FIFO_Status;
+   procedure Transmit_Status
+     (This : UART_Port;
+      Result : out UART_FIFO_Status);
+
+   procedure Receive_Status_Inner
+     (Periph : UART_Peripheral;
+      Result : out UART_FIFO_Status);
+
+   procedure Receive_Status
+     (This : UART_Port;
+      Result : out UART_FIFO_Status);
 
    function FIFO_Address
       (This : UART_Port)
@@ -115,12 +119,11 @@ is
    --  overriding
    function Data_Size
       (Port : UART_Port)
-      return UART_Data_Size
-   with Volatile_Function;
+      return UART_Data_Size;
 
    --  overriding
    procedure Transmit
-     (This    : in out UART_Port;
+     (This    : UART_Port;
       Data    : UART_Data_8b;
       Status  : out UART_Status;
       Timeout : Natural := 1000);
@@ -134,7 +137,7 @@ is
 
    --  overriding
    procedure Receive
-     (This    : in out UART_Port;
+     (This    : UART_Port;
       Data    : out UART_Data_8b;
       Status  : out UART_Status;
       Timeout : Natural := 1000)
@@ -155,7 +158,7 @@ is
                            Lvl_Three_Quarter,
                            Lvl_Seven_Eighth);
 
-   procedure Set_FIFO_IRQ_Level (This : in out UART_Port;
+   procedure Set_FIFO_IRQ_Level (This :        UART_Port;
                                  RX   :        FIFO_IRQ_Level;
                                  TX   :        FIFO_IRQ_Level);
    --  Set the trigger point for receive and transmit FIFO interrupt. For the
@@ -173,28 +176,26 @@ is
       Break_Error,
       Overrun_Error);
 
-   procedure Enable_IRQ (This : in out UART_Port;
+   procedure Enable_IRQ (This :        UART_Port;
                          IRQ  :        UART_IRQ_Flag);
    --  Enable the given IRQ flag
 
-   procedure Disable_IRQ (This : in out UART_Port;
+   procedure Disable_IRQ (This :        UART_Port;
                           IRQ  :        UART_IRQ_Flag);
    --  Disable the given IRQ flag
 
-   procedure Clear_IRQ (This : in out UART_Port;
+   procedure Clear_IRQ (This :        UART_Port;
                         IRQ  :        UART_IRQ_Flag);
    --  Clear the given IRQ flag
 
-   function Masked_IRQ_Status (This : UART_Port;
-                               IRQ  : UART_IRQ_Flag)
-                               return Boolean
-   with Volatile_Function;
+   procedure Masked_IRQ_Status (This : UART_Port;
+                               IRQ  : UART_IRQ_Flag;
+                               Result : out Boolean);
    --  Return true if the given IRQ flag is signaled and enabled
 
-   function Raw_IRQ_Status (This : UART_Port;
-                            IRQ  : UART_IRQ_Flag)
-                            return Boolean
-   with Volatile_Function;
+   procedure Raw_IRQ_Status (This : UART_Port;
+                            IRQ  : UART_IRQ_Flag;
+                            Result : out Boolean);
    --  Return true if the given IRQ flag is signaled even if the flag is not
    --  enabled.
 

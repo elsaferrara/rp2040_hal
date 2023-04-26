@@ -23,10 +23,10 @@ package RP.Device is
    --  SPI_0 : aliased RP.SPI.SPI_Port (0, RP2040_SVD.SPI.SPI0_Periph'Access);
    --  SPI_1 : aliased RP.SPI.SPI_Port (1, RP2040_SVD.SPI.SPI1_Periph'Access);
    SPI_0 : aliased RP.SPI.SPI_Port := (Num => 0,
-                                       Periph => RP2040_SVD.SPI.SPI0_Periph'Access,
+                                       --  Periph => RP2040_SVD.SPI.SPI0_Periph'Access,
                                       Blocking => <>);
    SPI_1 : aliased RP.SPI.SPI_Port := (Num => 1,
-                                       Periph => RP2040_SVD.SPI.SPI1_Periph'Access,
+                                       --  Periph => RP2040_SVD.SPI.SPI1_Periph'Access,
                                       Blocking => <>);
 
    --  RP.I2C implements the low level interface and is recommended if you need
