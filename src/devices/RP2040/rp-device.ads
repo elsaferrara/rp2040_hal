@@ -42,10 +42,10 @@ package RP.Device is
    --  UART_0 : aliased RP.UART.UART_Port (0, RP2040_SVD.UART.UART0_Periph'Access);
    --  UART_1 : aliased RP.UART.UART_Port (1, RP2040_SVD.UART.UART1_Periph'Access);
    UART_0 : aliased RP.UART.UART_Port := (Num => 0,
-                                          Periph => RP2040_SVD.UART.UART0_Periph,
+                                          --  Periph => RP2040_SVD.UART.UART0_Periph,
                                           Config => <>);
    UART_1 : aliased RP.UART.UART_Port := (Num => 1,
-                                          Periph => RP2040_SVD.UART.UART1_Periph,
+                                          --  Periph => RP2040_SVD.UART.UART1_Periph,
                                           Config => <>);
 
    PIO0_Periph : aliased RP.PIO.PIO_Peripheral

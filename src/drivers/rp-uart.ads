@@ -40,16 +40,14 @@ is
 
    subtype UART_Number is Natural range 0 .. 1;
 
-   type UART_Periph is (UART0, UART1);
 
    type UART_Port
    is tagged -- new HAL.UART.UART_Port with
       record
          Num    : UART_Number;
-          Periph : RP2040_SVD.UART.UART_Peripheral;
+          --  Periph : RP2040_SVD.UART.UART_Peripheral;
          Config : UART_Configuration;
-      end record
-     with Volatile;
+      end record;
 
    --  type UART_Port
    --     (Num    : UART_Number;
@@ -72,7 +70,7 @@ is
    --  procedure. Stick parity is used in some protocols to indicate the
    --  beginning of a new message.
    procedure Set_Stick_Parity
-      (This    : in out UART_Port;
+      (This    : in UART_Port;
        Enabled : Boolean);
 
    --  Just so we're clear on the magnitude of these timings
@@ -82,16 +80,14 @@ is
    function Symbol_Time
       (This : UART_Port)
        return Microseconds
-     with Volatile_Function,
-     Post => Symbol_Time'Result <= 1_000_001
+     with Post => Symbol_Time'Result <= 1_000_001
    and then Symbol_Time'Result > 0;
 
 
    --  Duration of a single frame transmission for the current configuration
    function Frame_Time
       (This : UART_Port)
-      return Microseconds
-   with Volatile_Function;
+      return Microseconds;
 
    --  Send a break by holding TX active. The Delays implementation must
    --  support Delay_Microseconds. It's okay if delays are longer, but they
@@ -105,13 +101,11 @@ is
 
    function Transmit_Status
       (This : UART_Port)
-      return UART_FIFO_Status
-   with Volatile_Function;
+      return UART_FIFO_Status;
 
    function Receive_Status
       (This : UART_Port)
-      return UART_FIFO_Status
-   with Volatile_Function;
+      return UART_FIFO_Status;
 
    function FIFO_Address
       (This : UART_Port)
