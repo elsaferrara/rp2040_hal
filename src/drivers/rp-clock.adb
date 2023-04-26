@@ -289,9 +289,9 @@ package body RP.Clock with SPARK_Mode is
          when RTC  => CLOCKS_Periph.FC0_SRC.FC0_SRC := clk_rtc;
       end case;
 
-      Tmp := CLOCKS_Periph.FC0_STATUS.DONE;
-      while not Tmp loop
+      loop
          Tmp := CLOCKS_Periph.FC0_STATUS.DONE;
+         exit when Tmp;
       end loop;
 
       Tmp := CLOCKS_Periph.FC0_STATUS.DIED;

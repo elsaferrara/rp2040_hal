@@ -10,81 +10,64 @@ with Ada.Unchecked_Conversion;
 
 package body RP.UART with SPARK_Mode is
 
-   procedure Lemma_Div_Pos (A : Hertz; B : Hertz_Baud) is
-   null;
-
    procedure Configure
-      (This   : in out UART_Port;
-       Config : UART_Configuration := Default_UART_Configuration)
+     (This   : in out UART_Port;
+      Config : UART_Configuration := Default_UART_Configuration)
    is
-      use RP.Reset;
-      Word_Length : constant UInt2 := UInt2
-        (Config.Word_Size - UART_Word_Size'First);
-      Num : constant UART_Number := This.Num;
-   begin
-      case Num is
+         use RP.Reset;
+         Word_Length : constant UInt2 := UInt2
+           (Config.Word_Size - UART_Word_Size'First);
+         Num : constant UART_Number := This.Num;
+      begin
+         case Num is
          when 0 => Reset_Peripheral (Reset_UART0);
          when 1 => Reset_Peripheral (Reset_UART1);
-      end case;
+         end case;
 
-      This.Periph.UARTDMACR :=
-         (RXDMAE => True,
-          TXDMAE => True,
-          others => <>);
+         This.Periph.UARTDMACR :=
+           (RXDMAE => True,
+            TXDMAE => True,
+            others => <>);
 
-      declare
-         Clock_Frequency : Hertz;
-         Div_Float : Float range 0.0 .. Float'Last;
-         Int : UInt16;
-         Frac : UInt6;
-         Div : UART_Divider;
-         Tmp : Integer;
-      begin
-         RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
-         pragma Assert (Clock_Frequency >= 0);
-         pragma Assert (Config.Baud > 0);
-         Div_Float := Float (Clock_Frequency) / Float (Config.Baud * 16);
-         Lemma_Div_Pos (Clock_Frequency, Config.Baud * 16);
-         --  pragma Assert (Float (Config.Baud * 16) > 0.0);
-         --  pragma Assert (Float (Clock_Frequency) >= 0.0);
-         pragma Assert (Div_Float >= 0.0);
-         pragma Assert (Div_Float >= Float (Integer'First));
-         Tmp := Integer (Div_Float);
-         if Float (Tmp) > Div_Float then
-            Int := UInt16 (Div_Float) - 1;
-         else
-            Int := UInt16 (Div_Float);
-         end if;
+         declare
+            Clock_Frequency : Hertz;
+            Int : Natural;
+            Remainder : Natural;
+            Multiple : constant Natural := (2 ** UARTFBRD_BAUD_DIVFRAC_Field'Size);
+         begin
+            RP.Clock.Frequency (RP.Clock.PERI, Clock_Frequency);
+            Int := Clock_Frequency / (Config.Baud * 16);
+            Remainder := Clock_Frequency mod (Config.Baud * 16);
+            pragma Assert (Int >= 0);
+            pragma Assert (Int <= 2 ** 16 - 1);
+            This.Periph.UARTIBRD.BAUD_DIVINT := UInt16 (Int);
+            --  pragma Assert (Remainder < (Config.Baud * 16));
+            --  pragma Assert (Multiple <= 2 ** 6);
+            --  pragma Assert (Multiple /= 0);
+            --  pragma Assert (Remainder / (Config.Baud * 16) < 1);
+            --  pragma Assert (Remainder / (Config.Baud * 16) * Multiple < Multiple);
+            --  pragma Assert (((Long_Long_Integer (Remainder) * Long_Long_Integer (Multiple)) / Long_Long_Integer (Config.Baud * 16)) <= Long_Long_Integer (Multiple));
+            This.Periph.UARTFBRD.BAUD_DIVFRAC := UInt6 ((Long_Long_Integer (Remainder) * Long_Long_Integer (Multiple)) / Long_Long_Integer (Config.Baud * 16));
+         end;
 
-         if Int > 0 then
-            Frac := UInt6 (Div_Float - Float (Int));
-         else
-            Frac := UInt6 (Div_Float);
-         end if;
+         This.Periph.UARTLCR_H :=
+           (WLEN   => Word_Length,
+            PEN    => Config.Parity,
+            EPS    => Config.Parity_Type = Even,
+            STP2   => (Config.Stop_Bits = 2),
+            SPS    => False, --  Stick parity is disabled by default
+            FEN    => Config.Enable_FIFOs,
+            BRK    => False, --  Don't send break initially
+            others => <>);
 
-         Div := Div_Value (Int, Frac);
-         This.Periph.UARTIBRD.BAUD_DIVINT := Div_Integer (Div);
-         This.Periph.UARTFBRD.BAUD_DIVFRAC := Div_Fraction (Div);
-      end;
+         This.Periph.UARTCR :=
+           (UARTEN => True,
+            TXE    => True,
+            RXE    => True,
+            LBE    => Config.Loopback,
+            others => <>);
 
-      This.Periph.UARTLCR_H :=
-         (WLEN   => Word_Length,
-          PEN    => Config.Parity,
-          EPS    => Config.Parity_Type = Even,
-          STP2   => (Config.Stop_Bits = 2),
-          SPS    => False, --  Stick parity is disabled by default
-          FEN    => Config.Enable_FIFOs,
-          BRK    => False, --  Don't send break initially
-          others => <>);
-
-      This.Periph.UARTCR :=
-         (UARTEN => True,
-          TXE    => True,
-          RXE    => True,
-          LBE    => Config.Loopback,
-          others => <>);
-
-      This.Config := Config;
+         This.Config := Config;
    end Configure;
 
    procedure Set_Stick_Parity

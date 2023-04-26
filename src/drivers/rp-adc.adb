@@ -7,19 +7,21 @@ with RP2040_SVD.ADC; use RP2040_SVD.ADC;
 with RP.GPIO; use RP.GPIO;
 with RP.Reset;
 
-package body RP.ADC is
+package body RP.ADC with SPARK_Mode is
    use HAL;
 
    procedure Enable
    is
       use RP.Reset;
+      Ready : Boolean;
    begin
       RP.Clock.Enable (RP.Clock.ADC);
       Reset_Peripheral (Reset_ADC);
 
       ADC_Periph.CS.EN := True;
-      while not ADC_Periph.CS.READY loop
-         null;
+      loop
+         Ready := ADC_Periph.CS.READY;
+         exit when Ready;
       end loop;
 
       --  Enable FIFO and DMA operation
@@ -38,7 +40,12 @@ package body RP.ADC is
 
    function Enabled
       return Boolean
-   is (ADC_Periph.CS.EN and ADC_Periph.CS.READY);
+   is
+      Enable :  Boolean := ADC_Periph.CS.EN;
+      Ready :  Boolean := ADC_Periph.CS.READY;
+   begin
+      return Enable and Ready;
+     end Enabled;
 
    procedure Configure
       (Channel : ADC_Channel)
@@ -127,14 +134,19 @@ package body RP.ADC is
    function Read
       return Analog_Value
    is
+      Start_Many : Boolean := ADC_Periph.CS.START_MANY;
+      Empty : Boolean;
+      Value : FIFO_VAL_Field;
    begin
-      if not ADC_Periph.CS.START_MANY then
+      if not Start_Many then
          ADC_Periph.CS.START_ONCE := True;
       end if;
-      while ADC_Periph.FCS.EMPTY loop
-         null;
+      loop
+         Empty := ADC_Periph.FCS.EMPTY;
+         exit when not Empty;
       end loop;
-      return Analog_Value (ADC_Periph.FIFO.VAL);
+      Value := ADC_Periph.FIFO.VAL;
+      return Analog_Value (Value);
    end Read;
 
    function Read_Microvolts
@@ -187,7 +199,11 @@ package body RP.ADC is
    is (UInt8 ((V - ADC_Divider (Div_Integer (V))) * 2 ** 8));
 
    function FIFO_Address
-      return System.Address
-   is (ADC_Periph.FIFO'Address);
+     return System.Address
+   with SPARK_Mode => Off
+   is
+   begin
+     return (ADC_Periph.FIFO'Address);
+   end FIFO_Address;
 
 end RP.ADC;

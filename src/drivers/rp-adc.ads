@@ -10,7 +10,7 @@ with System;
 with HAL;
 
 package RP.ADC
-   with Preelaborate
+   with Preelaborate, SPARK_Mode
 is
    subtype Analog_Value is HAL.UInt12;
 
@@ -104,7 +104,7 @@ is
       with Pre => Point.Pin in RP.GPIO.ADC_Pin;
 
    function FIFO_Address
-      return System.Address;
+     return System.Address;
 
 private
 

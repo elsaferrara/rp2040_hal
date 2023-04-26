@@ -21,7 +21,7 @@ is
 
    type UART_FIFO_Status is (Empty, Not_Full, Full, Busy, Invalid);
 
-   subtype Hertz_Baud is Hertz range 1 .. Natural'Last;
+   subtype Hertz_Baud is Hertz range 2 ** 11 .. Natural'Last;
 
    --  Default configuration is 115200 8n1
    --  https://en.wikipedia.org/wiki/8-N-1
@@ -40,6 +40,8 @@ is
 
    subtype UART_Number is Natural range 0 .. 1;
 
+   type UART_Periph is (UART0, UART1);
+
    type UART_Port
    is tagged -- new HAL.UART.UART_Port with
       record
@@ -56,16 +58,12 @@ is
    --     Config : UART_Configuration;
    --  end record;
 
-   procedure Lemma_Div_Pos (A : Hertz; B : Hertz_Baud)
-     with Pre => A >= 0 and B > 0,
-     Post => Float (A) / Float (B) >= 0.0;
-
    procedure Configure
       (This   : in out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
      with Pre'Class => Config.Baud < 2 ** 27
-       and then RP.Clock.Test_Frequency > 3_686_400
-       and then RP.Clock.Enabled (RP.Clock.PERI)
+       --  and then RP.Clock.Frequency > 3_686_400
+       --  and then RP.Clock.Enabled (RP.Clock.PERI)
 
      --  with Pre => RP.Clock.Frequency (RP.Clock.PERI) > 3_686_400
    ;

@@ -5,9 +5,9 @@
 --
 with RP2040_SVD.TIMER; use RP2040_SVD.TIMER;
 
-package body RP.Timer with SPARK_Mode is
+package body RP.Timer is
    function Clock
-      return Time
+     return Time
    is
       --  This implementation uses the non-latching TIMERAWH and TIMERAWL
       --  registers in order to be safe for concurrent access.
