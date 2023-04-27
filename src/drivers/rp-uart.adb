@@ -77,7 +77,7 @@ package body RP.UART with SPARK_Mode is
       end Configure_Inner;
    begin
       case This.Num is
-      when 0 => Configure_Inner (This, Config, UART0_Periph);
+         when 0 => Configure_Inner (This, Config, UART0_Periph);
          when 1 => Configure_Inner (This, Config, UART1_Periph);
       end case;
    end Configure;
@@ -246,6 +246,7 @@ package body RP.UART with SPARK_Mode is
          Periph : UART_Peripheral)
          return System.Address
         with Volatile_Function;
+
       function FIFO_Address_Inner
         (This : UART_Port;
          Periph : UART_Peripheral)
