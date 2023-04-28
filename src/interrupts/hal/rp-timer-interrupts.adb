@@ -40,12 +40,18 @@ package body RP.Timer.Interrupts is
    function Enabled
       (This : Delays)
       return Boolean
-   is (TIMER_Periph.INTE.ALARM_2);
+   is
+     Alarm_2 : Boolean := TIMER_Periph.INTE.ALARM_2;
+   begin
+      return Alarm_2;
+      end Enabled;
+
 
    procedure Delay_Until
       (This : in out Delays;
        T    : Time)
    is
+      Alarm_2 : Boolean;
    begin
       if T <= Clock then
          return;
@@ -53,9 +59,11 @@ package body RP.Timer.Interrupts is
       TIMER_Periph.ALARM2 := UInt32 (T and 16#FFFFFFFF#);
       loop
          Cortex_M.Hints.Wait_For_Interrupt;
+         Alarm_2 := TIMER_Periph.INTS.ALARM_2;
          if Clock >= T then
             return;
-         elsif TIMER_Periph.INTS.ALARM_2 then
+
+         elsif Alarm_2 then
             --  If the high byte of the timer rolled over but we still haven't
             --  reached the target time, reset the alarm and go again
             TIMER_Periph.ALARM2 := UInt32 (T and 16#FFFFFFFF#);

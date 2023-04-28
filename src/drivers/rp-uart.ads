@@ -42,9 +42,9 @@ is
 
 
    type UART_Port
+     (Num    : UART_Number)
    is tagged -- new HAL.UART.UART_Port with
       record
-         Num    : UART_Number;
           --  Periph : RP2040_SVD.UART.UART_Peripheral;
          Config : UART_Configuration;
       end record;
@@ -57,7 +57,7 @@ is
    --  end record;
 
    procedure Configure
-      (This   : in out UART_Port;
+      (This   : out UART_Port;
        Config : UART_Configuration := Default_UART_Configuration)
      with Pre'Class => Config.Baud < 2 ** 27
    ;

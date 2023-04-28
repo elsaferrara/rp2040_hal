@@ -7,7 +7,9 @@ with Cortex_M.NVIC;
 with System;
 
 package RP_Interrupts
-   with Preelaborate
+with Preelaborate,
+  Abstract_State => State,
+  Initializes => State
 is
 
    --  This is a minimal version of the System.BB.Interrupts interface

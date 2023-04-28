@@ -11,11 +11,11 @@ with Ada.Unchecked_Conversion;
 package body RP.UART with SPARK_Mode is
 
    procedure Configure
-     (This   : in out UART_Port;
+     (This   : out UART_Port;
       Config : UART_Configuration := Default_UART_Configuration)
    is
       procedure Configure_Inner
-        (This   : in out UART_Port;
+        (This   : out UART_Port;
          Config : UART_Configuration := Default_UART_Configuration;
          Periph : in out UART_Peripheral)
       is

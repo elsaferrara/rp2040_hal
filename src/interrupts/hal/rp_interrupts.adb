@@ -6,7 +6,8 @@
 with System.Machine_Code; use System.Machine_Code;
 with HAL; use HAL;
 
-package body RP_Interrupts is
+package body RP_Interrupts
+with Refined_State => (State => Handlers) is
 
    Handlers : array (Interrupt_ID) of Interrupt_Handler := (others => null);
 

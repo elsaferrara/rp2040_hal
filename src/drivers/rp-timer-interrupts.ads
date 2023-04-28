@@ -23,7 +23,7 @@ package RP.Timer.Interrupts is
    procedure Delay_Until
       (This : in out Delays;
        T    : Time)
-       with Pre => Enabled (This);
+       with Pre'Class => Enabled (This);
 
    --  Microsecond delays are assumed to be relatively short and are
    --  implemented with a polling loop rather than interrupts
@@ -36,7 +36,8 @@ package RP.Timer.Interrupts is
    procedure Delay_Milliseconds
       (This : in out Delays;
        Ms   : Integer)
-       with Pre => Enabled (This);
+     --  with Pre => Enabled (This)
+   ;
 
    overriding
    procedure Delay_Seconds
