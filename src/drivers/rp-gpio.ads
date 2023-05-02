@@ -62,7 +62,7 @@ is
        Schmitt   : Boolean := False;
        Slew_Fast : Boolean := False;
        Drive     : GPIO_Drive := Drive_4mA)
-   with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+   with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30 ;
    --  In Analog mode, Pull and Func are ignored and set to Floating and HI_Z
 
    procedure Get
@@ -116,19 +116,19 @@ is
    procedure Set
      (This : GPIO_Point;
       Result : out Boolean)
-        with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+        with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30;
 
    procedure Set
      (This : GPIO_Point)
-     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+     with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30;
 
    procedure Clear
       (This : GPIO_Point)
-     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+     with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30;
 
    procedure Toggle
       (This : GPIO_Point)
-     with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+     with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30;
 
 private
 
@@ -138,8 +138,7 @@ private
 
    function Pin_Mask (Pin : GPIO_Pin)
                       return GPIO_Pin_Mask
-     with Pre => 2 ** GPIO_Pin'Pos (Pin) <= 2 ** 30 - 1
-   --  GPIO_Pin'Pos (Pin) < 30
+     with Pre => GPIO_Pin'Pos (Pin) < 30
    ;
 
    type GPIO_CTRL_Register is record

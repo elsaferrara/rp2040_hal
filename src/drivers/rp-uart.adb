@@ -121,6 +121,7 @@ package body RP.UART with SPARK_Mode is
       Parity_Bits : constant Integer := (if Parity then 1 else 0);
       Stop_Bits   : constant Integer := Integer (This.Config.Stop_Bits);
       Frame_Bits  : constant Integer := Start_Bits + Data_Bits + Parity_Bits + Stop_Bits;
+      pragma Assert (Frame_Bits <= 12);
       Symbol_Time : constant Microseconds := This.Symbol_Time;
    begin
       return Frame_Bits * Symbol_Time;
@@ -128,13 +129,13 @@ package body RP.UART with SPARK_Mode is
 
    procedure Send_Break
      (This     : UART_Port;
-      Delays   : not null HAL.Time.Any_Delays;
+      Delays   : in out T;
       Duration : Microseconds;
       Start    : Boolean := True)
    is
       procedure Send_Break_Inner
         (This     : UART_Port;
-         Delays   : not null HAL.Time.Any_Delays;
+         Delays   : in out T;
          Duration : Microseconds;
          Start    : Boolean := True;
          Periph : in out UART_Peripheral)

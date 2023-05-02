@@ -17,7 +17,7 @@ package body RP.Timer.Interrupts is
    end IRQ_Handler;
 
    procedure Enable
-      (This : in out Delays)
+     (This : in out Delays)
    is
       use RP2040_SVD.Interrupts;
       use System;

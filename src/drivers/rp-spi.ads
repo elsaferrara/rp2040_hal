@@ -21,10 +21,9 @@ is
    --  end record;
 
 
-      type SPI_Port
+      type SPI_Port (Num    : SPI_Number)
    is tagged -- new HAL.SPI.SPI_Port with
       record
-      Num    : SPI_Number;
          --  Periph : RP2040_SVD.SPI.SPI_Peripheral;
       Blocking : Boolean := True;
       end record;

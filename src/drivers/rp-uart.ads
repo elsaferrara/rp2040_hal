@@ -83,15 +83,20 @@ is
    --  Duration of a single frame transmission for the current configuration
    function Frame_Time
       (This : UART_Port)
-      return Microseconds;
+       return Microseconds
+     with Post => Frame_Time'Result >= 0
+       and then Frame_Time'Result < 2 ** 30
+   ;
 
    --  Send a break by holding TX active. The Delays implementation must
    --  support Delay_Microseconds. It's okay if delays are longer, but they
    --  cannot be shorter. If Start = True, an additional delay of one bit
    --  period will be added before the break.
+   generic
+   type T (<>) is new HAL.Time.Delays with private;
    procedure Send_Break
      (This     : UART_Port;
-      Delays   : not null HAL.Time.Any_Delays;
+      Delays   : in out T;
       Duration : Microseconds;
       Start    : Boolean := True);
 

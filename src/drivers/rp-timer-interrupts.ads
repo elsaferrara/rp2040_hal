@@ -5,13 +5,13 @@
 --
 with HAL.Time; use HAL.Time;
 
-package RP.Timer.Interrupts is
+package RP.Timer.Interrupts with SPARK_Mode, Elaborate_Body is
 
    type Delays is new HAL.Time.Delays with null record;
 
    function Enabled
       (This : Delays)
-      return Boolean;
+       return Boolean;
 
    --  Enables the ALARM2 interrupt used by the Delay methods.
    procedure Enable
@@ -42,7 +42,7 @@ package RP.Timer.Interrupts is
    overriding
    procedure Delay_Seconds
       (This : in out Delays;
-       S    : Integer)
-       with Pre => Enabled (This);
+       S    : Integer);
+       --  with Pre => Enabled (This);
 
 end RP.Timer.Interrupts;
