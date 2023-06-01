@@ -365,10 +365,12 @@ package body RP.USB_Device is
       --  J state is now forced, hold for 1ms
       declare
          use RP.Timer;
+         Current_Time : RP.Timer.Time;
       begin
          --  Use a busy wait in case this procedure is called in an interrupt
          --  handler.
-         Busy_Wait_Until (RP.Timer.Clock + Milliseconds (1));
+         RP.Timer.Clock (Current_Time);
+         Busy_Wait_Until (Current_Time + Milliseconds (1));
       end;
 
       --  Put everything back the way we found it

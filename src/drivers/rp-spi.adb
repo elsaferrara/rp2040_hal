@@ -260,9 +260,11 @@ package body RP.SPI with SPARK_Mode is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
          FIFO     : SPI_FIFO_Status;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
 
          for D of Data loop
@@ -274,8 +276,8 @@ package body RP.SPI with SPARK_Mode is
                   Status := Err_Error;
                   return;
                end if;
-
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -287,7 +289,8 @@ package body RP.SPI with SPARK_Mode is
             loop
                Transmit_Status_Inner (Periph, FIFO);
                exit when FIFO = Empty;
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -320,9 +323,11 @@ package body RP.SPI with SPARK_Mode is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
          FIFO     : SPI_FIFO_Status;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
 
          for D of Data loop
@@ -335,7 +340,8 @@ package body RP.SPI with SPARK_Mode is
                   return;
                end if;
 
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -347,7 +353,8 @@ package body RP.SPI with SPARK_Mode is
             loop
                Transmit_Status_Inner (Periph, FIFO);
                exit when FIFO = Empty;
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -388,9 +395,11 @@ package body RP.SPI with SPARK_Mode is
          Deadline : RP.Timer.Time with Relaxed_Initialization;
          FIFO     : SPI_FIFO_Status;
          Periph_Data : UInt16;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
 
          for I in Data'Range loop
@@ -404,7 +413,8 @@ package body RP.SPI with SPARK_Mode is
                   return;
                end if;
 
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -446,9 +456,11 @@ package body RP.SPI with SPARK_Mode is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
          FIFO     : SPI_FIFO_Status;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
 
          for I in Data'Range loop
@@ -462,7 +474,8 @@ package body RP.SPI with SPARK_Mode is
                   return;
                end if;
 
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;

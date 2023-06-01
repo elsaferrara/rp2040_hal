@@ -153,6 +153,7 @@ package body RP.I2C is
    is
       use type RP.Timer.Time;
       P : RP2040_SVD.I2C.I2C_Peripheral renames This.Periph.all;
+      Current_Time : RP.Timer.Time;
    begin
       P.IC_ENABLE :=
          (ENABLE => ENABLED,
@@ -162,7 +163,8 @@ package body RP.I2C is
           TDMAE  => ENABLED,
           others => <>);
       while not This.Enabled loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             return;
          end if;
       end loop;
@@ -174,6 +176,7 @@ package body RP.I2C is
    is
       use type RP.Timer.Time;
       P : RP2040_SVD.I2C.I2C_Peripheral renames This.Periph.all;
+      Current_Time : RP.Timer.Time;
    begin
       P.IC_DMA_CR :=
          (RDMAE  => DISABLED,
@@ -184,7 +187,8 @@ package body RP.I2C is
           ABORT_k => (if This.Role = Controller and then This.Last_Command.STOP /= ENABLE then ENABLED else DISABLE),
           others  => <>);
       while This.Enabled loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             return;
          end if;
       end loop;
@@ -231,9 +235,11 @@ package body RP.I2C is
       use RP.Timer;
       P : RP2040_SVD.I2C.I2C_Peripheral renames This.Periph.all;
       Cmd : IC_DATA_CMD_Register;
+      Current_Time : Time;
    begin
       while not This.Read_Ready loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := Timeout;
             Data := 0;
             return;
@@ -269,6 +275,7 @@ package body RP.I2C is
        Deadline : RP.Timer.Time := RP.Timer.Time'Last)
    is
       use type RP.Timer.Time;
+      Current_Time : RP.Timer.Time;
    begin
       This.TX_Remaining := Natural (Length);
 
@@ -279,7 +286,8 @@ package body RP.I2C is
       if This.Role = Target then
          --  Wait for the controller to send our address
          while This.Periph.IC_RAW_INTR_STAT.RD_REQ = INACTIVE loop
-            if RP.Timer.Clock >= Deadline then
+            RP.Timer.Clock (Current_Time);
+            if Current_Time >= Deadline then
                return;
             end if;
          end loop;
@@ -302,10 +310,12 @@ package body RP.I2C is
       use RP.Timer;
       P : RP2040_SVD.I2C.I2C_Peripheral renames This.Periph.all;
       Clear : Boolean
-         with Volatile, Unreferenced;
+        with Volatile, Unreferenced;
+      Current_Time : Time;
    begin
       while not This.Write_Ready loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := Timeout;
             This.Abort_Write;
             return;

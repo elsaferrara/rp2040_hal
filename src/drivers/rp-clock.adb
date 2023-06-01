@@ -10,7 +10,7 @@ with RP.Reset;
 
 --  with Ada.Text_IO; use Ada.Text_IO;
 
-package body RP.Clock with SPARK_Mode is
+package body RP.Clock is -- with SPARK_Mode is
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
                                return CLK_SELECTED_Field
    is (2 ** Natural (SRC)); -- Shift_Left
@@ -258,7 +258,7 @@ package body RP.Clock with SPARK_Mode is
    function Enabled
      (CID : Clock_Id)
       return Boolean
-     with SPARK_Mode => Off
+     -- with SPARK_Mode => Off
    is
       Result : Boolean;
    begin

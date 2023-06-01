@@ -9,7 +9,8 @@ with System;
 package RP_Interrupts
 with Preelaborate,
   Abstract_State => State,
-  Initializes => State
+  Initializes => State,
+    SPARK_Mode
 is
 
    --  This is a minimal version of the System.BB.Interrupts interface

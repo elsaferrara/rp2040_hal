@@ -6,13 +6,13 @@
 with HAL; use HAL;
 
 package RP.Timer
-   with Preelaborate
+   with Preelaborate, SPARK_Mode
 is
    type Time is new UInt64;
    Ticks_Per_Second : constant := 1_000_000;
 
    --  Monotonic clock running at Ticks_Per_Second.
-      function Clock return Time;
+      procedure Clock (Result : out Time);
 
    --  Waste CPU cycles until Clock reaches the given Deadline. This procedure
    --  is useful in situations where interrupt based delays will not work,

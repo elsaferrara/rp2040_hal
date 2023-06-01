@@ -7,7 +7,8 @@ with System.Machine_Code; use System.Machine_Code;
 with HAL; use HAL;
 
 package body RP_Interrupts
-with Refined_State => (State => Handlers)is
+with Refined_State => (State => Handlers),
+SPARK_Mode is
 
    Handlers : array (Interrupt_ID) of Interrupt_Handler := (others => null);
 
@@ -27,6 +28,7 @@ with Refined_State => (State => Handlers)is
    end Attach_Handler;
 
    procedure Interrupt_Request_Handler
+     with SPARK_Mode => Off
    is
       IPSR : UInt32;
       Id   : Interrupt_ID;

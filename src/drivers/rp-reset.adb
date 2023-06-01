@@ -45,12 +45,16 @@ package body RP.Reset is
        Timeout    : Natural := 100)
    is
       use RP.Timer;
-      Deadline : constant Time := Clock + Milliseconds (Timeout);
+      Current_Time : Time;
+      Deadline : Time;
    begin
+      Clock (Current_Time);
+      Deadline := Current_Time + Milliseconds (Timeout);
       RESETS_Periph.RESET (Peripheral) := True;
       RESETS_Periph.RESET (Peripheral) := False;
       while not RESETS_Periph.RESET_DONE (Peripheral) loop
-         if Timeout > 0 and then Clock >= Deadline then
+         Clock (Current_Time);
+         if Timeout > 0 and then Current_Time >= Deadline then
             Status := Reset_Timeout;
             return;
          end if;

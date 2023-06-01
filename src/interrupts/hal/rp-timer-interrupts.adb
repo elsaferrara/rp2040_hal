@@ -9,7 +9,7 @@ with Cortex_M.Hints;
 with RP_Interrupts;
 with System;
 
-package body RP.Timer.Interrupts is
+package body RP.Timer.Interrupts with SPARK_Mode is
 
    procedure IRQ_Handler is
    begin
@@ -18,6 +18,7 @@ package body RP.Timer.Interrupts is
 
    procedure Enable
      (This : in out Delays)
+     with SPARK_Mode => Off
    is
       use RP2040_SVD.Interrupts;
       use System;
@@ -31,38 +32,40 @@ package body RP.Timer.Interrupts is
    end Enable;
 
    procedure Disable
-      (This : in out Delays)
+      (This : Delays)
    is
    begin
       TIMER_Periph.INTE.ALARM_2 := False;
    end Disable;
 
-   function Enabled
-      (This : Delays)
-      return Boolean
+   procedure Enabled
+      (This : Delays;
+       Result : out Boolean)
    is
      Alarm_2 : Boolean := TIMER_Periph.INTE.ALARM_2;
    begin
-      return Alarm_2;
+      Result:= Alarm_2;
       end Enabled;
 
 
    procedure Delay_Until
-      (This : in out Delays;
+      (This : Delays;
        T    : Time)
    is
       Alarm_2 : Boolean;
+      Current_Time : Time;
    begin
-      if T <= Clock then
+      Clock (Current_Time);
+      if T <= Current_Time then
          return;
       end if;
       TIMER_Periph.ALARM2 := UInt32 (T and 16#FFFFFFFF#);
       loop
          Cortex_M.Hints.Wait_For_Interrupt;
          Alarm_2 := TIMER_Periph.INTS.ALARM_2;
-         if Clock >= T then
+         Clock (Current_Time);
+         if Current_Time >= T then
             return;
-
          elsif Alarm_2 then
             --  If the high byte of the timer rolled over but we still haven't
             --  reached the target time, reset the alarm and go again
@@ -71,35 +74,42 @@ package body RP.Timer.Interrupts is
       end loop;
    end Delay_Until;
 
-   overriding
+   --  overriding
    procedure Delay_Microseconds
-      (This : in out Delays;
-       Us   : Integer)
+      (Us   : Integer)
    is
-      Deadline : constant UInt64 := UInt64 (Clock) + UInt64 (Us);
+      Current_Time : Time;
+      Deadline : UInt64;
    begin
       if Us > 0 then
-         while UInt64 (Clock) < Deadline loop
-            null;
+         Clock (Current_Time);
+         Deadline := UInt64 (Current_Time) + UInt64 (Us);
+         loop
+            Clock(Current_Time);
+            exit when UInt64 (Current_Time) >= Deadline;
          end loop;
       end if;
    end Delay_Microseconds;
 
-   overriding
+   --  overriding
    procedure Delay_Milliseconds
-      (This : in out Delays;
-       Ms   : Integer)
+      (This : Delays;
+       Ms   : Natural)
    is
+      Current_Time : Time;
    begin
-      Delay_Until (This, Clock + (1_000 * Time (Ms)));
+      Clock (Current_Time);
+      Delay_Until (This, Current_Time + (1_000 * Time (Ms)));
    end Delay_Milliseconds;
 
-   overriding
+   --  overriding
    procedure Delay_Seconds
-      (This : in out Delays;
-       S    : Integer)
+      (This : Delays;
+       S    : Natural)
    is
+      Current_Time : Time;
    begin
-      Delay_Until (This, Clock + (1_000_000 * Time (S)));
+      Clock(Current_Time);
+      Delay_Until (This, Current_Time + (1_000_000 * Time (S)));
    end Delay_Seconds;
 end RP.Timer.Interrupts;

@@ -5,9 +5,8 @@
 --
 with RP2040_SVD.TIMER; use RP2040_SVD.TIMER;
 
-package body RP.Timer is
-   function Clock
-     return Time
+package body RP.Timer with SPARK_Mode is
+   procedure Clock (Result : out Time)
    is
       --  This implementation uses the non-latching TIMERAWH and TIMERAWL
       --  registers in order to be safe for concurrent access.
@@ -33,7 +32,7 @@ package body RP.Timer is
          High := Next_High;
       end if;
 
-      return Time ((UInt64 (High)) * (2 ** 32) or UInt64 (Low)); -- Shift_Left
+      Result := Time ((UInt64 (High)) * (2 ** 32) or UInt64 (Low)); -- Shift_Left
    end Clock;
 
    procedure Busy_Wait_Until (Deadline : Time) is

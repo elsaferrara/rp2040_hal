@@ -53,10 +53,12 @@ package body RP.I2C_Master is
       --  modular type >2**10 will do, but 32 bits fits nicely in a CPU
       --  register.
       Bus_Addr : constant UInt32 := Shift_Right (UInt32 (Addr), 1);
+      Current_Time : RP.Timer.Time;
    begin
       This.Port.Disable (Deadline);
       while This.Port.Enabled loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := HAL.I2C.Err_Timeout;
             return;
          end if;
@@ -71,7 +73,8 @@ package body RP.I2C_Master is
 
       This.Port.Enable (Deadline);
       while not This.Port.Enabled loop
-         if RP.Timer.Clock >= Deadline then
+         RP.Timer.Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := HAL.I2C.Err_Timeout;
             return;
          end if;
@@ -89,9 +92,12 @@ package body RP.I2C_Master is
       Timeout : Natural := 1000)
    is
       use RP.Timer;
-      Deadline : constant Time := RP.Timer.Clock + Milliseconds (Timeout);
+      Current_Time : Time;
+      Deadline : Time;
       S : RP.I2C.I2C_Status;
    begin
+      Clock (Current_Time);
+      Deadline := Current_Time + Milliseconds (Timeout);
       This.Set_Address (Addr, Status, Deadline);
       if Status /= HAL.I2C.Ok then
          return;
@@ -109,7 +115,8 @@ package body RP.I2C_Master is
       end loop;
 
       while not This.Port.State.TX_Empty loop
-         if Clock >= Deadline then
+         Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := HAL.I2C.Err_Timeout;
             return;
          end if;
@@ -127,9 +134,12 @@ package body RP.I2C_Master is
       Timeout : Natural := 1000)
    is
       use RP.Timer;
-      Deadline : constant Time := RP.Timer.Clock + Milliseconds (Timeout);
+      Current_Time : Time;
+      Deadline : Time;
       S : RP.I2C.I2C_Status;
    begin
+      Clock (Current_Time);
+      Deadline := Current_Time + Milliseconds (Timeout);
       This.Set_Address (Addr, Status, Deadline);
       if Status /= HAL.I2C.Ok then
          return;
@@ -158,9 +168,12 @@ package body RP.I2C_Master is
       Timeout       : Natural := 1000)
    is
       use RP.Timer;
-      Deadline : constant Time := RP.Timer.Clock + Milliseconds (Timeout);
+      Current_Time : Time;
+      Deadline : Time;
       S : RP.I2C.I2C_Status;
    begin
+      Clock (Current_Time);
+      Deadline := Current_Time + Milliseconds (Timeout);
       This.Set_Address (Addr, Status, Deadline);
       if Status /= HAL.I2C.Ok then
          return;
@@ -205,7 +218,8 @@ package body RP.I2C_Master is
       end loop;
 
       while not This.Port.State.TX_Empty loop
-         if Clock >= Deadline then
+         Clock (Current_Time);
+         if Current_Time >= Deadline then
             Status := HAL.I2C.Err_Timeout;
             return;
          end if;
@@ -225,9 +239,12 @@ package body RP.I2C_Master is
       Timeout       : Natural := 1000)
    is
       use RP.Timer;
-      Deadline : constant Time := RP.Timer.Clock + Milliseconds (Timeout);
+      Current_Time : Time;
+      Deadline : Time;
       S : RP.I2C.I2C_Status;
    begin
+      Clock (Current_Time);
+      Deadline := Current_Time + Milliseconds (Timeout);
       This.Set_Address (Addr, Status, Deadline);
       if Status /= HAL.I2C.Ok then
          return;

@@ -14,6 +14,10 @@ package body RP.UART with SPARK_Mode is
      (This   : out UART_Port;
       Config : UART_Configuration := Default_UART_Configuration)
    is
+            procedure Configure_Inner
+        (This   : out UART_Port;
+         Config : UART_Configuration := Default_UART_Configuration;
+         Periph : in out UART_Peripheral);
       procedure Configure_Inner
         (This   : out UART_Port;
          Config : UART_Configuration := Default_UART_Configuration;
@@ -129,13 +133,11 @@ package body RP.UART with SPARK_Mode is
 
    procedure Send_Break
      (This     : UART_Port;
-      Delays   : in out T;
       Duration : Microseconds;
       Start    : Boolean := True)
    is
       procedure Send_Break_Inner
         (This     : UART_Port;
-         Delays   : in out T;
          Duration : Microseconds;
          Start    : Boolean := True;
          Periph : in out UART_Peripheral)
@@ -151,16 +153,16 @@ package body RP.UART with SPARK_Mode is
 
          if Start then
             Symbol_Time := This.Symbol_Time;
-            Delays.Delay_Microseconds (Symbol_Time);
+            Delay_Microseconds (Symbol_Time);
          end if;
          Periph.UARTLCR_H.BRK := True;
-         Delays.Delay_Microseconds (Duration);
+         Delay_Microseconds (Duration);
          Periph.UARTLCR_H.BRK := False;
       end Send_Break_Inner;
    begin
       case This.Num is
-         when 0 => Send_Break_Inner (This, Delays, Duration, Start, UART0_Periph);
-         when 1 => Send_Break_Inner (This, Delays, Duration, Start, UART1_Periph);
+         when 0 => Send_Break_Inner (This, Duration, Start, UART0_Periph);
+         when 1 => Send_Break_Inner (This, Duration, Start, UART1_Periph);
       end case;
    end Send_Break;
 
@@ -290,9 +292,11 @@ package body RP.UART with SPARK_Mode is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
          FIFO     : UART_FIFO_Status;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
          for D of Data loop
             loop
@@ -302,7 +306,8 @@ package body RP.UART with SPARK_Mode is
                   Status := Err_Error;
                   return;
                end if;
-               if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+               RP.Timer.Clock (Current_Time);
+               if Timeout > 0 and then Current_Time >= Deadline then
                   Status := Err_Timeout;
                   return;
                end if;
@@ -350,9 +355,11 @@ package body RP.UART with SPARK_Mode is
          Is_BE : Boolean;
          Is_FE : Boolean;
          Is_PE : Boolean;
+         Current_Time : RP.Timer.Time;
       begin
          if Timeout > 0 then
-            Deadline := RP.Timer.Clock + RP.Timer.Milliseconds (Timeout);
+            RP.Timer.Clock (Current_Time);
+            Deadline := Current_Time + RP.Timer.Milliseconds (Timeout);
          end if;
 
          for I in Data'Range loop
@@ -366,8 +373,8 @@ package body RP.UART with SPARK_Mode is
                      Status := Err_Error;
                      return;
                   end if;
-
-                  if Timeout > 0 and then RP.Timer.Clock >= Deadline then
+                  RP.Timer.Clock (Current_Time);
+                  if Timeout > 0 and then Current_Time >= Deadline then
                      Status := Err_Timeout;
                      return;
                   end if;

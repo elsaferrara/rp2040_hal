@@ -93,10 +93,10 @@ is
    --  cannot be shorter. If Start = True, an additional delay of one bit
    --  period will be added before the break.
    generic
-   type T (<>) is new HAL.Time.Delays with private;
+   with procedure Delay_Microseconds
+        (Us   : Integer);
    procedure Send_Break
      (This     : UART_Port;
-      Delays   : in out T;
       Duration : Microseconds;
       Start    : Boolean := True);
 
