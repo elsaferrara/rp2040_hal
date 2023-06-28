@@ -10,7 +10,7 @@ with RP2040_SVD;
 with HAL; use HAL;
 
 package RP.Clock
-   with Preelaborate -- , SPARK_Mode
+   with Preelaborate, SPARK_Mode
 is
    subtype XOSC_Hertz is Hertz range 0 .. 15_000_000
       with Static_Predicate => XOSC_Hertz in 0 | 1_000_000 .. 15_000_000;
@@ -132,11 +132,14 @@ is
    --  Remember to switch clk_sys to another source before modifying PLL_SYS
 
    subtype Countable_Clock_Id is Clock_Id range REF .. RTC;
+   type Frequency_Array is array (Countable_Clock_Id) of Hertz;
+   Configured_Frequency : Frequency_Array := (others => 0) with Ghost;
    procedure Frequency
      (CID      : Countable_Clock_Id;
       Result : out Hertz;
       Rounded  : Boolean := True;
-      Accuracy : UInt4 := 15);
+      Accuracy : UInt4 := 15)
+   with Post => Configured_Frequency (CID) = Result;
 
    --  By default, the fractional part of the frequency counter result register
    --  is ignored. Setting Rounded = False includes the fractional frequency,
@@ -213,8 +216,8 @@ private
    type CLK_DIV_Register is record
       INT  : CLK_DIV_INT_Field := 1;
       FRAC : CLK_DIV_FRAC_Field := 0;
-   end record
-      with Volatile_Full_Access, Object_Size => 32, Size => 32;
+   end record;
+      --  with Volatile_Full_Access, Object_Size => 32, Size => 32;
    for CLK_DIV_Register use record
       INT  at 0 range 8 .. 31;
       FRAC at 0 range 0 .. 7;
