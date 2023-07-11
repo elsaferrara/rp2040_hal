@@ -10,7 +10,9 @@ with RP.Reset;
 
 --  with Ada.Text_IO; use Ada.Text_IO;
 
-package body RP.Clock  with SPARK_Mode is
+
+package body RP.Clock with SPARK_Mode is
+
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
                                return CLK_SELECTED_Field
    is (2 ** Natural (SRC)); -- Shift_Left
@@ -310,6 +312,7 @@ package body RP.Clock  with SPARK_Mode is
             Result := F + ((Hertz (Tmp3) * 3125) / 100);
          end if;
       end if;
+      Configured_Frequency (CID) := Result;
    end Frequency;
 
    function ROSC_Frequency

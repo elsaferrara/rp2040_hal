@@ -68,7 +68,7 @@ is
    procedure Get
      (This : GPIO_Point;
       Result : out Boolean)
-        with Pre'Class => 2 ** GPIO_Pin'Pos (This.Pin) <= 2 ** 30 - 1;
+        with Pre'Class => GPIO_Pin'Pos (This.Pin) < 30;
    --  with Pre => This.Mode = HAL.GPIO.Input;
 
    procedure Enable_Interrupt

@@ -10,7 +10,7 @@ with HAL; use HAL;
 
 package body RP.SPI with SPARK_Mode is
    procedure Configure
-     (This   : in out SPI_Port;
+     (This   : out SPI_Port;
       Config : SPI_Configuration := Default_SPI_Configuration)
    is
       procedure Configure_Inner
@@ -56,7 +56,7 @@ package body RP.SPI with SPARK_Mode is
             TXDMAE => True,
             others => <>);
 
-         This.Set_Speed (Config.Baud);
+         Set_Speed (This, Config.Baud);
 
          This.Blocking := Config.Blocking;
 

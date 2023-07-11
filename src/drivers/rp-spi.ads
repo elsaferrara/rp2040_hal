@@ -22,7 +22,7 @@ is
 
 
       type SPI_Port (Num    : SPI_Number)
-   is tagged -- new HAL.SPI.SPI_Port with
+   is -- tagged -- new HAL.SPI.SPI_Port with
       record
          --  Periph : RP2040_SVD.SPI.SPI_Peripheral;
       Blocking : Boolean := True;
@@ -46,14 +46,15 @@ is
    Default_SPI_Configuration : constant SPI_Configuration := (others => <>);
 
    procedure Configure
-      (This   : in out SPI_Port;
-       Config : SPI_Configuration := Default_SPI_Configuration);
+      (This   : out SPI_Port;
+       Config : SPI_Configuration := Default_SPI_Configuration)
+   with Pre => Config.Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
 
    procedure Set_Speed
       (This : SPI_Port;
        Baud : Hertz)
-     --  with Pre => Baud <= RP.Clock.Frequency (RP.Clock.PERI)
-   ;
+     with Pre => Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
+
    Clock_Speed_Error : exception;
 
    --  overriding

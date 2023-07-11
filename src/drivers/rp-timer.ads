@@ -18,6 +18,7 @@ is
    --  is useful in situations where interrupt based delays will not work,
    --  e.g. an interrupt handler.
    procedure Busy_Wait_Until (Deadline : Time);
+      function Get_Deadline ( T : Time; D : UInt64) return Time;
 
    function Milliseconds
       (T : Natural)

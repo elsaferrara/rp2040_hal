@@ -6,6 +6,7 @@
 with RP2040_SVD.TIMER; use RP2040_SVD.TIMER;
 
 package body RP.Timer with SPARK_Mode is
+
    procedure Clock (Result : out Time)
    is
       --  This implementation uses the non-latching TIMERAWH and TIMERAWL
@@ -55,6 +56,9 @@ package body RP.Timer with SPARK_Mode is
       end loop;
 
    end Busy_Wait_Until;
+
+   function Get_Deadline ( T : Time; D : UInt64) return Time
+     is (T + Time (D));
 
    function Milliseconds
       (T : Natural)
