@@ -451,7 +451,6 @@ package body RP.UART with SPARK_Mode is
    function Div_Fraction
      (D : UART_Divider)
        return UARTFBRD_BAUD_DIVFRAC_Field
-   --  with SPARK_Mode => Off
    is
       Multiple : constant UART_Divider := UART_Divider (2 ** UARTFBRD_BAUD_DIVFRAC_Field'Size);
       Int      : UART_Divider;

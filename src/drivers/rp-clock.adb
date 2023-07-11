@@ -10,12 +10,12 @@ with RP.Reset;
 
 --  with Ada.Text_IO; use Ada.Text_IO;
 
-package body RP.Clock is -- with SPARK_Mode is
+package body RP.Clock  with SPARK_Mode is
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
                                return CLK_SELECTED_Field
    is (2 ** Natural (SRC)); -- Shift_Left
 
-   function Test_Frequency return Hertz is
+   function Test_Frequency return Hertz with SPARK_Mode => Off is
       Temp : Boolean := CLOCKS_Periph.FC0_STATUS.DIED;
       Temp2 : UInt25 := CLOCKS_Periph.FC0_RESULT.KHZ;
    begin
@@ -162,6 +162,7 @@ package body RP.Clock is -- with SPARK_Mode is
          Tmp := CLOCKS_Periph.CLK (PERI).SELECTED;
          exit when Tmp = CLK_SELECTED_Mask (PERI_SRC_SYS);
       end loop;
+      RP.Watchdog.Disable;
    end Initialize;
 
    procedure Enable
@@ -258,7 +259,7 @@ package body RP.Clock is -- with SPARK_Mode is
    function Enabled
      (CID : Clock_Id)
       return Boolean
-     -- with SPARK_Mode => Off
+      with SPARK_Mode => Off
    is
       Result : Boolean;
    begin

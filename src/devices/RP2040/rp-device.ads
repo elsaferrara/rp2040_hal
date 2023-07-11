@@ -56,7 +56,7 @@ package RP.Device is
 
    Timer   : aliased RP.Timer.Interrupts.Delays;
    RTC     : aliased RP.RTC.RTC_Device;
-   UDC     : aliased RP.USB_Device.USB_Device_Controller;
+   --  UDC     : aliased RP.USB_Device.USB_Device_Controller;
 
    ADC     : aliased RP2040_SVD.ADC.ADC_Peripheral
       with Import, Address => RP2040_SVD.ADC_Base;

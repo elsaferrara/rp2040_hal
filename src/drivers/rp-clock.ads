@@ -10,7 +10,7 @@ with RP2040_SVD;
 with HAL; use HAL;
 
 package RP.Clock
-   with Preelaborate -- , SPARK_Mode
+   with Preelaborate, SPARK_Mode
 is
    subtype XOSC_Hertz is Hertz range 0 .. 15_000_000
       with Static_Predicate => XOSC_Hertz in 0 | 1_000_000 .. 15_000_000;
