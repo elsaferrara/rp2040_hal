@@ -38,7 +38,7 @@ package body RP.Timer with SPARK_Mode is
 
    procedure Busy_Wait_Until (Deadline : Time) is
       DL_High : constant UInt32 :=
-        UInt32 ((Deadline - (Deadline mod 2**32))/ 2**32 and 16#FF_FF_FF_FF#);
+        UInt32 ((Deadline - (Deadline mod 2**32)) / 2**32 and 16#FF_FF_FF_FF#);
       DL_Low  : constant UInt32 :=
         UInt32 (Deadline and 16#FF_FF_FF_FF#);
 
@@ -57,12 +57,12 @@ package body RP.Timer with SPARK_Mode is
 
    end Busy_Wait_Until;
 
-   function Get_Deadline ( T : Time; D : UInt64) return Time
-     is (T + Time (D));
+   function Get_Deadline (T : Time; D : UInt64) return Time
+   is (T + Time (D));
 
    function Milliseconds
-      (T : Natural)
-      return Time
+     (T : Natural)
+       return Time
    is ((Ticks_Per_Second / 1_000) * Time (T));
 
 end RP.Timer;

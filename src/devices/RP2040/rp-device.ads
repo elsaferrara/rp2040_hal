@@ -3,9 +3,9 @@
 --
 --  SPDX-License-Identifier: BSD-3-Clause
 --
-with RP2040_SVD.SPI;
+--  with RP2040_SVD.SPI;
 with RP2040_SVD.I2C;
-with RP2040_SVD.UART;
+--  with RP2040_SVD.UART;
 with RP2040_SVD.ADC;
 with RP2040_SVD;
 with RP.SPI;
@@ -15,7 +15,7 @@ with RP.UART;
 with RP.PIO;
 with RP.RTC;
 with RP.Interpolator;
-with RP.USB_Device;
+--  with RP.USB_Device;
 with RP.Timer.Interrupts;
 with System;
 

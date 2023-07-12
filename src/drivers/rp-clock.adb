@@ -10,7 +10,6 @@ with RP.Reset;
 
 --  with Ada.Text_IO; use Ada.Text_IO;
 
-
 package body RP.Clock with SPARK_Mode is
 
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
@@ -18,12 +17,13 @@ package body RP.Clock with SPARK_Mode is
    is (2 ** Natural (SRC)); -- Shift_Left
 
    function Test_Frequency return Hertz with SPARK_Mode => Off is
-      Temp : Boolean := CLOCKS_Periph.FC0_STATUS.DIED;
-      Temp2 : UInt25 := CLOCKS_Periph.FC0_RESULT.KHZ;
+      Temp : constant Boolean := CLOCKS_Periph.FC0_STATUS.DIED;
+      Temp2 : constant UInt25 := CLOCKS_Periph.FC0_RESULT.KHZ;
    begin
       if Temp then
          return 0;
-      else return Hertz(Temp2) * 1_000;
+      else
+         return Hertz (Temp2) * 1_000;
       end if;
    end Test_Frequency;
 
@@ -152,8 +152,8 @@ package body RP.Clock with SPARK_Mode is
 
       --  Switch clk_rtc to clk_xosc / 256 = 46_875 Hz
       CLOCKS_Periph.CLK (RTC).DIV :=
-         (INT  => CLK_DIV_INT_Field (XOSC_Frequency / 46_875),
-          FRAC => 0);
+        (INT  => CLK_DIV_INT_Field (XOSC_Frequency / 46_875),
+         FRAC => 0);
       CLOCKS_Periph.CLK (RTC).CTRL.AUXSRC := PLL_USB;
       --  PLL_USB is actually XOSC here, CLK_RTC_CTRL_AUXSRC is different from the others.
       --  clk_rtc SELECTED is hardwired, no point in polling it.
@@ -261,7 +261,7 @@ package body RP.Clock with SPARK_Mode is
    function Enabled
      (CID : Clock_Id)
       return Boolean
-      with SPARK_Mode => Off
+     with SPARK_Mode => Off
    is
       Result : Boolean;
    begin
@@ -270,10 +270,10 @@ package body RP.Clock with SPARK_Mode is
    end Enabled;
 
    procedure Frequency
-      (CID      : Countable_Clock_Id;
-       Result : out Hertz;
-       Rounded  : Boolean := True;
-       Accuracy : UInt4 := 15)
+     (CID      : Countable_Clock_Id;
+      Result : out Hertz;
+      Rounded  : Boolean := True;
+      Accuracy : UInt4 := 15)
    is
       use type RP2040_SVD.CLOCKS.FC0_SRC_FC0_SRC_Field;
       F : Hertz;
@@ -316,7 +316,7 @@ package body RP.Clock with SPARK_Mode is
    end Frequency;
 
    function ROSC_Frequency
-      return Hertz
+     return Hertz
    is (12_000_000);
 
    procedure Set_SYS_Source
@@ -358,7 +358,7 @@ package body RP.Clock with SPARK_Mode is
       loop
          Tmp := CLOCKS_Periph.CLK (SYS).SELECTED;
          exit when Tmp = CLK_SELECTED_Mask (SRC);
-       end loop;
+      end loop;
    end Set_SYS_Source;
 
 end RP.Clock;

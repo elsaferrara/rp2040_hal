@@ -39,14 +39,13 @@ package body RP.Timer.Interrupts with SPARK_Mode is
    end Disable;
 
    procedure Enabled
-      (This : Delays;
-       Result : out Boolean)
+     (This : Delays;
+      Result : out Boolean)
    is
-     Alarm_2 : Boolean := TIMER_Periph.INTE.ALARM_2;
+      Alarm_2 : constant Boolean := TIMER_Periph.INTE.ALARM_2;
    begin
-      Result:= Alarm_2;
-      end Enabled;
-
+      Result := Alarm_2;
+   end Enabled;
 
    procedure Delay_Until
       (This : Delays;
@@ -85,7 +84,7 @@ package body RP.Timer.Interrupts with SPARK_Mode is
          Clock (Current_Time);
          Deadline := UInt64 (Current_Time) + UInt64 (Us);
          loop
-            Clock(Current_Time);
+            Clock (Current_Time);
             exit when UInt64 (Current_Time) >= Deadline;
          end loop;
       end if;
@@ -109,7 +108,7 @@ package body RP.Timer.Interrupts with SPARK_Mode is
    is
       Current_Time : Time;
    begin
-      Clock(Current_Time);
+      Clock (Current_Time);
       Delay_Until (This, Current_Time + (1_000_000 * Time (S)));
    end Delay_Seconds;
 end RP.Timer.Interrupts;

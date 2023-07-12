@@ -3,7 +3,6 @@
 --
 --  SPDX-License-Identifier: BSD-3-Clause
 --
-with RP2040_SVD.SPI; use RP2040_SVD.SPI;
 with RP.Timer;
 with RP.Reset;
 with HAL; use HAL;
@@ -94,7 +93,7 @@ package body RP.SPI with SPARK_Mode is
          end loop;
          if Prescale > 254 then
             raise Clock_Speed_Error with "PERI frequency too low for requested SPI baud";
-             pragma Annotate (GNATprove, Intentional,"exception might be raised", "Ignoring exception for now");
+            pragma Annotate (GNATprove, Intentional, "exception might be raised", "Ignoring exception for now");
          end if;
          pragma Assert (Prescale >= 2);
 
@@ -197,7 +196,7 @@ package body RP.SPI with SPARK_Mode is
 
    function FIFO_Address
      (This : SPI_Port)
-       return System.Address
+      return System.Address
      with SPARK_Mode => Off
    is
       function FIFO_Address_Inner
@@ -228,7 +227,7 @@ package body RP.SPI with SPARK_Mode is
         (Periph : SPI_Peripheral;
          Result : out SPI_Data_Size)
       is
-         DSS : SSPCR0_DSS_Field := Periph.SSPCR0.DSS;
+         DSS : constant SSPCR0_DSS_Field := Periph.SSPCR0.DSS;
       begin
          if DSS = 2#1111# then
             Result := Data_Size_16b;
@@ -377,19 +376,19 @@ package body RP.SPI with SPARK_Mode is
       Status  : out SPI_Status;
       Timeout : Natural := 1000)
    is
-            procedure Receive_Inner
+      procedure Receive_Inner
         (Data    : out SPI_Data_8b;
          Status  : out SPI_Status;
          Timeout : Natural := 1000;
-         Periph : in out SPI_Peripheral)
+         Periph  : SPI_Peripheral)
         with Relaxed_Initialization => Data,
-   Post => (if Status = Ok then Data'Initialized);
+        Post => (if Status = Ok then Data'Initialized);
 
       procedure Receive_Inner
         (Data    : out SPI_Data_8b;
          Status  : out SPI_Status;
          Timeout : Natural := 1000;
-         Periph : in out SPI_Peripheral)
+         Periph  : SPI_Peripheral)
       is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
@@ -403,7 +402,7 @@ package body RP.SPI with SPARK_Mode is
          end if;
 
          for I in Data'Range loop
-            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data(J)'Initialized);
+            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data (J)'Initialized);
             loop
                Receive_Status_Inner (Periph, FIFO);
                exit when FIFO = Not_Full or FIFO = Full;
@@ -439,19 +438,19 @@ package body RP.SPI with SPARK_Mode is
       Timeout : Natural := 1000)
    is
 
-            procedure Receive_Inner
+      procedure Receive_Inner
         (Data    : out SPI_Data_16b;
          Status  : out SPI_Status;
          Timeout : Natural := 1000;
-         Periph : in out SPI_Peripheral)
-     with Relaxed_Initialization => Data,
-   Post => (if Status = Ok then Data'Initialized);
+         Periph  : SPI_Peripheral)
+        with Relaxed_Initialization => Data,
+        Post => (if Status = Ok then Data'Initialized);
 
       procedure Receive_Inner
         (Data    : out SPI_Data_16b;
          Status  : out SPI_Status;
          Timeout : Natural := 1000;
-         Periph : in out SPI_Peripheral)
+         Periph  : SPI_Peripheral)
       is
          use type RP.Timer.Time;
          Deadline : RP.Timer.Time with Relaxed_Initialization;
@@ -464,7 +463,7 @@ package body RP.SPI with SPARK_Mode is
          end if;
 
          for I in Data'Range loop
-            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data(J)'Initialized);
+            pragma Loop_Invariant (for all J in Data'First .. I - 1 => Data (J)'Initialized);
             loop
                Receive_Status_Inner (Periph, FIFO);
                exit when FIFO = Not_Full or FIFO = Full;

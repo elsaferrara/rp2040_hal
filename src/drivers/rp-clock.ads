@@ -10,10 +10,10 @@ with RP2040_SVD;
 with HAL; use HAL;
 
 package RP.Clock
-   with Preelaborate, SPARK_Mode
+with Preelaborate, SPARK_Mode
 is
    subtype XOSC_Hertz is Hertz range 0 .. 15_000_000
-      with Static_Predicate => XOSC_Hertz in 0 | 1_000_000 .. 15_000_000;
+     with Static_Predicate => XOSC_Hertz in 0 | 1_000_000 .. 15_000_000;
    --  The special value 0 indicates that the XOSC is not available.
 
    subtype XOSC_Cycles is Natural;
@@ -21,10 +21,10 @@ is
    function Test_Frequency return Hertz;
 
    procedure Initialize
-      (XOSC_Frequency     : XOSC_Hertz := 0;
-       XOSC_Startup_Delay : XOSC_Cycles := 770_048) --  ~64ms with a 12 MHz crystal
-       with Pre => XOSC_Startup_Delay <= (Natural (UInt14'Last) * 256)
-               and XOSC_Startup_Delay mod 256 = 0;
+     (XOSC_Frequency     : XOSC_Hertz := 0;
+      XOSC_Startup_Delay : XOSC_Cycles := 770_048) --  ~64ms with a 12 MHz crystal
+     with Pre => XOSC_Startup_Delay <= (Natural (UInt14'Last) * 256)
+     and XOSC_Startup_Delay mod 256 = 0;
    --  See 2.16.3 Startup Delay for XOSC_Startup_Delay calculation. The default
    --  value is approximately 1ms with a 12 MHz crystal.
 
@@ -34,8 +34,8 @@ is
    Invalid_PLL_Config : exception;
 
    type Clock_Id is
-      (GPOUT0, GPOUT1, GPOUT2, GPOUT3, REF, SYS, PERI, USB, ADC, RTC,
-       PLL_SYS, GPIN0, GPIN1, PLL_USB, ROSC, XOSC);
+     (GPOUT0, GPOUT1, GPOUT2, GPOUT3, REF, SYS, PERI, USB, ADC, RTC,
+      PLL_SYS, GPIN0, GPIN1, PLL_USB, ROSC, XOSC);
 
    procedure Enable
      (CID : Clock_Id);
@@ -47,19 +47,19 @@ is
    subtype GP_Source is Clock_Id range REF .. XOSC;
 
    procedure Set_Source
-      (GP     : GP_Output;
-       Source : GP_Source);
+     (GP     : GP_Output;
+      Source : GP_Source);
    --  GP will glitch if enabled while changing sources
 
    GP_Divider_Fraction : constant := 1.0 / (2 ** 8);
    type GP_Divider is delta GP_Divider_Fraction range 0.0 .. (2.0 ** 24) - GP_Divider_Fraction
-      with Small => GP_Divider_Fraction,
-           Size  => 32;
+     with Small => GP_Divider_Fraction,
+     Size  => 32;
    --  If GP_Divider is 0.0, then it represents (2.0 ** 16)
 
    procedure Set_Divider
-      (GP  : GP_Output;
-       Div : GP_Divider);
+     (GP  : GP_Output;
+      Div : GP_Divider);
 
    procedure Check_Enabled
      (CID : Clock_Id;
@@ -67,15 +67,15 @@ is
      with Pre => CID in GPOUT0 .. RTC;
 
    function Enabled
-          (CID : Clock_Id)
-     return Boolean;
+     (CID : Clock_Id)
+           return Boolean;
 
    subtype SYS_Clock_Id is Clock_Id range PLL_SYS .. XOSC;
    procedure Set_SYS_Source
-      (Source : SYS_Clock_Id);
+     (Source : SYS_Clock_Id);
 
    subtype PLL_Clock_Id is Clock_Id
-      with Static_Predicate => PLL_Clock_Id in PLL_SYS | PLL_USB;
+     with Static_Predicate => PLL_Clock_Id in PLL_SYS | PLL_USB;
    subtype PLL_FREF_Field is Hertz range 5_000_000 .. 800_000_000;
    subtype PLL_REFDIV_Field is UInt6 range 1 .. 63;
    subtype PLL_FBDIV_Field is UInt12 range 16 .. 320;
@@ -93,40 +93,40 @@ is
    --  Use pico-sdk/src/rp2_common/hardware_clocks/scripts/vcocalc.py
 
    PLL_48_MHz : constant PLL_Config :=
-      (FREF     => 12_000_000,
-       REFDIV   => 1,
-       FBDIV    => 64,
-       POSTDIV1 => 4,
-       POSTDIV2 => 4);
+     (FREF     => 12_000_000,
+      REFDIV   => 1,
+      FBDIV    => 64,
+      POSTDIV1 => 4,
+      POSTDIV2 => 4);
 
    PLL_125_MHz : constant PLL_Config :=
-      (FREF     => 12_000_000,
-       REFDIV   => 1,
-       FBDIV    => 125,
-       POSTDIV1 => 6,
-       POSTDIV2 => 2);
+     (FREF     => 12_000_000,
+      REFDIV   => 1,
+      FBDIV    => 125,
+      POSTDIV1 => 6,
+      POSTDIV2 => 2);
 
    PLL_133_MHz : constant PLL_Config :=
-      (FREF     => 12_000_000,
-       REFDIV   => 1,
-       FBDIV    => 133,
-       POSTDIV1 => 6,
-       POSTDIV2 => 2);
+     (FREF     => 12_000_000,
+      REFDIV   => 1,
+      FBDIV    => 133,
+      POSTDIV1 => 6,
+      POSTDIV2 => 2);
 
    PLL_250_MHz : constant PLL_Config :=
-      (FREF     => 12_000_000,
-       REFDIV   => 1,
-       FBDIV    => 125,
-       POSTDIV1 => 6,
-       POSTDIV2 => 1);
+     (FREF     => 12_000_000,
+      REFDIV   => 1,
+      FBDIV    => 125,
+      POSTDIV1 => 6,
+      POSTDIV2 => 1);
 
    procedure Configure_PLL
-      (PLL    : PLL_Clock_Id;
-       Config : PLL_Config)
-   with Pre => Config.POSTDIV1 >= Config.POSTDIV2
+     (PLL    : PLL_Clock_Id;
+      Config : PLL_Config)
+     with Pre => Config.POSTDIV1 >= Config.POSTDIV2
      and then (Integer (Config.FREF) / Integer (Config.REFDIV)) >= 5_000_000
      and then Integer (Config.FBDIV) > 0
-       and then (Integer (Config.FREF) / Integer (Config.REFDIV)) <= Integer'Last / Integer (Config.FBDIV)
+     and then (Integer (Config.FREF) / Integer (Config.REFDIV)) <= Integer'Last / Integer (Config.FBDIV)
      and then (Integer (Config.FREF) / Integer (Config.REFDIV)) * Integer (Config.FBDIV)
        in 400_000_000 .. 1_600_000_000;
    --  Remember to switch clk_sys to another source before modifying PLL_SYS
@@ -139,7 +139,7 @@ is
       Result : out Hertz;
       Rounded  : Boolean := True;
       Accuracy : UInt4 := 15)
-   with Post => Configured_Frequency (CID) = Result;
+     with Post => Configured_Frequency (CID) = Result;
 
    --  By default, the fractional part of the frequency counter result register
    --  is ignored. Setting Rounded = False includes the fractional frequency,
@@ -162,20 +162,20 @@ private
    procedure Enable_XOSC;
 
    type CLK_CTRL_AUXSRC_Field is
-      (PLL_SYS, GPIN0, GPIN1, PLL_USB, ROSC, XOSC, SYS, USB, ADC, RTC, REF)
-      with Size => 4;
+     (PLL_SYS, GPIN0, GPIN1, PLL_USB, ROSC, XOSC, SYS, USB, ADC, RTC, REF)
+     with Size => 4;
    for CLK_CTRL_AUXSRC_Field use
-      (PLL_SYS => 0,
-       GPIN0   => 1,
-       GPIN1   => 2,
-       PLL_USB => 3,
-       ROSC    => 4,
-       XOSC    => 5,
-       SYS     => 6,
-       USB     => 7,
-       ADC     => 8,
-       RTC     => 9,
-       REF     => 10);
+     (PLL_SYS => 0,
+      GPIN0   => 1,
+      GPIN1   => 2,
+      PLL_USB => 3,
+      ROSC    => 4,
+      XOSC    => 5,
+      SYS     => 6,
+      USB     => 7,
+      ADC     => 8,
+      RTC     => 9,
+      REF     => 10);
 
    --  SRC can only be set for REF and SYS and has different meanings for both
    subtype CLK_CTRL_SRC_Field is UInt2;
@@ -199,7 +199,7 @@ private
       PHASE  : CLK_CTRL_PHASE_Field := 0;
       NUDGE  : Boolean := False;
    end record
-      with Volatile_Full_Access, Object_Size => 32;
+     with Volatile_Full_Access, Object_Size => 32;
    for CLK_CTRL_Register use record
       SRC    at 0 range 0 .. 1;
       AUXSRC at 0 range 5 .. 8;
@@ -217,27 +217,27 @@ private
       INT  : CLK_DIV_INT_Field := 1;
       FRAC : CLK_DIV_FRAC_Field := 0;
    end record;
-      --  with Volatile_Full_Access, Object_Size => 32, Size => 32;
+   --  with Volatile_Full_Access, Object_Size => 32, Size => 32;
    for CLK_DIV_Register use record
       INT  at 0 range 8 .. 31;
       FRAC at 0 range 0 .. 7;
    end record;
 
    function To_CLK_DIV is new Ada.Unchecked_Conversion
-      (Source => GP_Divider,
-       Target => CLK_DIV_Register);
+     (Source => GP_Divider,
+      Target => CLK_DIV_Register);
 
    subtype CLK_SELECTED_Field is UInt32;
    function CLK_SELECTED_Mask (SRC : CLK_CTRL_SRC_Field)
-      return CLK_SELECTED_Field;
+                               return CLK_SELECTED_Field;
 
    type CLK_Register is record
       CTRL     : CLK_CTRL_Register;
       DIV      : CLK_DIV_Register;
       SELECTED : CLK_SELECTED_Field;
    end record
-      with Size => (3 * 32),
-           Volatile;
+     with Size => (3 * 32),
+     Volatile;
 
    for CLK_Register use record
       CTRL     at 0 range 0 .. 31;
@@ -320,6 +320,6 @@ private
    end record;
 
    CLOCKS_Periph : aliased CLOCKS_Peripheral
-      with Import, Async_Writers => True, Effective_Reads, Address => RP2040_SVD.CLOCKS_Base;
+     with Import, Async_Writers => True, Effective_Reads, Address => RP2040_SVD.CLOCKS_Base;
 
 end RP.Clock;

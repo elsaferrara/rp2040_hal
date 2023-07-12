@@ -10,7 +10,7 @@ with System;
 with RP2040_SVD;
 
 package RP.SPI
-   with Preelaborate, SPARK_Mode, Elaborate_Body
+with Preelaborate, SPARK_Mode, Elaborate_Body
 is
    subtype SPI_Number is Natural range 0 .. 1;
    --  type SPI_Port
@@ -20,12 +20,11 @@ is
    --     Blocking : Boolean := True;
    --  end record;
 
-
-      type SPI_Port (Num    : SPI_Number)
+   type SPI_Port (Num    : SPI_Number)
    is -- tagged -- new HAL.SPI.SPI_Port with
       record
          --  Periph : RP2040_SVD.SPI.SPI_Peripheral;
-      Blocking : Boolean := True;
+         Blocking : Boolean := True;
       end record;
 
    type SPI_Role is (Master, Slave);
@@ -46,73 +45,73 @@ is
    Default_SPI_Configuration : constant SPI_Configuration := (others => <>);
 
    procedure Configure
-      (This   : out SPI_Port;
-       Config : SPI_Configuration := Default_SPI_Configuration)
-   with Pre => Config.Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
+     (This   : out SPI_Port;
+      Config : SPI_Configuration := Default_SPI_Configuration)
+     with Pre => Config.Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
 
    procedure Set_Speed
-      (This : SPI_Port;
-       Baud : Hertz)
+     (This : SPI_Port;
+      Baud : Hertz)
      with Pre => Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
 
    Clock_Speed_Error : exception;
 
    --  overriding
    procedure Data_Size
-      (This : SPI_Port;
+     (This : SPI_Port;
       Result : out SPI_Data_Size);
 
-     procedure Transmit_Status_Inner
-        (Periph : SPI_Peripheral;
-        Result : out SPI_FIFO_Status);
+   procedure Transmit_Status_Inner
+     (Periph : SPI_Peripheral;
+      Result : out SPI_FIFO_Status);
 
    procedure Transmit_Status
-      (This : SPI_Port;
-       Result : out SPI_FIFO_Status);
+     (This : SPI_Port;
+      Result : out SPI_FIFO_Status);
 
-      procedure Receive_Status_Inner
-        (Periph : SPI_Peripheral;
-        Result : out SPI_FIFO_Status);
+   procedure Receive_Status_Inner
+     (Periph : SPI_Peripheral;
+      Result : out SPI_FIFO_Status);
 
    procedure Receive_Status
-      (This : SPI_Port;
+     (This : SPI_Port;
       Result : out SPI_FIFO_Status);
 
    function FIFO_Address
-      (This : SPI_Port)
-      return System.Address;
+     (This : SPI_Port)
+       return System.Address;
 
    --  overriding
    procedure Transmit
-      (This    : SPI_Port;
-       Data    : SPI_Data_8b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000);
+     (This    : SPI_Port;
+      Data    : SPI_Data_8b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000);
 
    --  overriding
    procedure Transmit
-      (This    : SPI_Port;
-       Data    : SPI_Data_16b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000);
+     (This    : SPI_Port;
+      Data    : SPI_Data_16b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000);
 
    --  overriding
    procedure Receive
-      (This    : SPI_Port;
-       Data    : out SPI_Data_8b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
-   with Relaxed_Initialization => Data,
-   Post => (if Status = Ok then Data'Initialized);
-
-   --  overriding
-   procedure Receive
-      (This    : SPI_Port;
-       Data    : out SPI_Data_16b;
-       Status  : out SPI_Status;
-       Timeout : Natural := 1000)
+     (This    : SPI_Port;
+      Data    : out SPI_Data_8b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
      with Relaxed_Initialization => Data,
-   Post => (if Status = Ok then Data'Initialized);
+     Post => (if Status = Ok then Data'Initialized);
+
+   --  overriding
+   procedure Receive
+     (This    : SPI_Port;
+      Data    : out SPI_Data_16b;
+      Status  : out SPI_Status;
+      Timeout : Natural := 1000)
+     with Relaxed_Initialization => Data,
+     Post => (if Status = Ok then Data'Initialized);
 
    type SPI_IRQ_Flag is
      (Receive_Overrun,
@@ -138,13 +137,13 @@ is
    --  Clear the given IRQ flag
 
    procedure Masked_IRQ_Status (This : SPI_Port;
-                               IRQ  : SPI_IRQ_Flag;
-                               Result : out Boolean);
+                                IRQ  : SPI_IRQ_Flag;
+                                Result : out Boolean);
    --  Return true if the given IRQ flag is signaled and enabled
 
    procedure Raw_IRQ_Status (This : SPI_Port;
-                            IRQ  : SPI_IRQ_Flag;
-                               Result : out Boolean);
+                             IRQ  : SPI_IRQ_Flag;
+                             Result : out Boolean);
    --  Return true if the given IRQ flag is signaled even if the flag is not
    --  enabled.
 

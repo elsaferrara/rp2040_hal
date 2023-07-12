@@ -26,10 +26,10 @@ package body RP.ADC with SPARK_Mode is
 
       --  Enable FIFO and DMA operation
       ADC_Periph.FCS :=
-         (DREQ_EN => True,
-          EN      => True,
-          THRESH  => 1,
-          others  => <>);
+        (DREQ_EN => True,
+         EN      => True,
+         THRESH  => 1,
+         others  => <>);
    end Enable;
 
    procedure Disable
@@ -39,16 +39,16 @@ package body RP.ADC with SPARK_Mode is
    end Disable;
 
    function Enabled
-      return Boolean
+     return Boolean
    is
-      Enable :  Boolean := ADC_Periph.CS.EN;
-      Ready :  Boolean := ADC_Periph.CS.READY;
+      Enable : constant Boolean := ADC_Periph.CS.EN;
+      Ready : constant Boolean := ADC_Periph.CS.READY;
    begin
       return Enable and Ready;
-     end Enabled;
+   end Enabled;
 
    procedure Configure
-      (Channel : ADC_Channel)
+     (Channel : ADC_Channel)
    is
    begin
       if Channel = Temperature_Sensor then
@@ -58,19 +58,19 @@ package body RP.ADC with SPARK_Mode is
             RP.GPIO.Enable;
          end if;
          declare
-            Point : GPIO_Point := (Pin => GPIO_Pin (Channel) + 26);
+            Point : constant GPIO_Point := (Pin => GPIO_Pin (Channel) + 26);
          begin
             Configure
-               (This => Point,
-                Mode => Analog,
-                Pull => Floating,
-                Func => HI_Z);
+              (This => Point,
+               Mode => Analog,
+               Pull => Floating,
+               Func => HI_Z);
          end;
       end if;
    end Configure;
 
    procedure Configure
-      (Channels : ADC_Channels)
+     (Channels : ADC_Channels)
    is
    begin
       for I in Channels'Range loop
@@ -81,31 +81,31 @@ package body RP.ADC with SPARK_Mode is
    end Configure;
 
    procedure Set_Mode
-      (Mode : ADC_Mode)
+     (Mode : ADC_Mode)
    is
    begin
       ADC_Periph.CS.START_MANY := (Mode = Free_Running);
    end Set_Mode;
 
    procedure Set_Round_Robin
-      (Channels : ADC_Channels)
+     (Channels : ADC_Channels)
    is
    begin
       ADC_Periph.CS.RROBIN := To_UInt5 (Channels);
    end Set_Round_Robin;
 
    procedure Set_Divider
-      (Div : ADC_Divider)
+     (Div : ADC_Divider)
    is
    begin
       ADC_Periph.DIV :=
-         (INT    => Div_Integer (Div),
-          FRAC   => Div_Fraction (Div),
-          others => <>);
+        (INT    => Div_Integer (Div),
+         FRAC   => Div_Fraction (Div),
+         others => <>);
    end Set_Divider;
 
    procedure Set_Sample_Rate
-      (Rate : Hertz)
+     (Rate : Hertz)
    is
       Clk_ADC : Hertz;
       Div     : ADC_Divider;
@@ -116,15 +116,15 @@ package body RP.ADC with SPARK_Mode is
    end Set_Sample_Rate;
 
    procedure Set_Sample_Bits
-      (Bits : ADC_Sample_Bits)
+     (Bits : ADC_Sample_Bits)
    is
    begin
       ADC_Periph.FCS.SHIFT := (Bits = 8);
    end Set_Sample_Bits;
 
    function Read
-      (Channel : ADC_Channel)
-      return Analog_Value
+     (Channel : ADC_Channel)
+       return Analog_Value
    is
    begin
       ADC_Periph.CS.AINSEL := CS_AINSEL_Field (Channel);
@@ -132,9 +132,9 @@ package body RP.ADC with SPARK_Mode is
    end Read;
 
    function Read
-      return Analog_Value
+     return Analog_Value
    is
-      Start_Many : Boolean := ADC_Periph.CS.START_MANY;
+      Start_Many : constant Boolean := ADC_Periph.CS.START_MANY;
       Empty : Boolean;
       Value : FIFO_VAL_Field;
    begin
@@ -150,9 +150,9 @@ package body RP.ADC with SPARK_Mode is
    end Read;
 
    function Read_Microvolts
-      (Channel : ADC_Channel;
-       VREF    : Microvolts := 3_300_000)
-      return Microvolts
+     (Channel : ADC_Channel;
+      VREF    : Microvolts := 3_300_000)
+       return Microvolts
    is
       Conversion_Factor : constant Float := Float (VREF) / Float (Analog_Value'Last);
       Counts            : constant Analog_Value := Read (Channel);
@@ -161,11 +161,11 @@ package body RP.ADC with SPARK_Mode is
    end Read_Microvolts;
 
    function Temperature
-      (Ref_Temp : Celsius := 27;
-       Vbe      : Microvolts := 706_000;
-       Slope    : Microvolts := 1_721;
-       VREF     : Microvolts := 3_300_000)
-      return Celsius
+     (Ref_Temp : Celsius := 27;
+      Vbe      : Microvolts := 706_000;
+      Slope    : Microvolts := 1_721;
+      VREF     : Microvolts := 3_300_000)
+       return Celsius
    is
       Temp : Celsius;
    begin
@@ -176,13 +176,13 @@ package body RP.ADC with SPARK_Mode is
    end Temperature;
 
    function To_ADC_Channel
-      (Point : RP.GPIO.GPIO_Point)
-      return ADC_Channel
+     (Point : RP.GPIO.GPIO_Point)
+       return ADC_Channel
    is (ADC_Channel (Point.Pin - 26));
 
    function Div_Integer
-      (V : ADC_Divider)
-      return UInt16
+     (V : ADC_Divider)
+       return UInt16
    is
       I : constant Natural := Natural (V);
    begin
@@ -194,16 +194,16 @@ package body RP.ADC with SPARK_Mode is
    end Div_Integer;
 
    function Div_Fraction
-      (V : ADC_Divider)
+     (V : ADC_Divider)
       return UInt8
    is (UInt8 ((V - ADC_Divider (Div_Integer (V))) * 2 ** 8));
 
    function FIFO_Address
      return System.Address
-   with SPARK_Mode => Off
+     with SPARK_Mode => Off
    is
    begin
-     return (ADC_Periph.FIFO'Address);
+      return (ADC_Periph.FIFO'Address);
    end FIFO_Address;
 
 end RP.ADC;

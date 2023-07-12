@@ -5,8 +5,6 @@
 --
 with RP2040_SVD.UART; use RP2040_SVD.UART;
 with HAL.UART; use HAL.UART;
-with HAL.Time;
-with RP.Clock;
 with System;
 with HAL; use HAL;
 
@@ -40,12 +38,11 @@ is
 
    subtype UART_Number is Natural range 0 .. 1;
 
-
    type UART_Port
      (Num    : UART_Number)
    is tagged -- new HAL.UART.UART_Port with
       record
-          --  Periph : RP2040_SVD.UART.UART_Peripheral;
+         --  Periph : RP2040_SVD.UART.UART_Peripheral;
          Config : UART_Configuration;
       end record;
 
@@ -66,7 +63,7 @@ is
    --  procedure. Stick parity is used in some protocols to indicate the
    --  beginning of a new message.
    procedure Set_Stick_Parity
-      (This    : in UART_Port;
+      (This    : UART_Port;
        Enabled : Boolean);
 
    --  Just so we're clear on the magnitude of these timings
@@ -78,7 +75,6 @@ is
        return Microseconds
      with Post => Symbol_Time'Result <= 1_000_001
    and then Symbol_Time'Result > 0;
-
 
    --  Duration of a single frame transmission for the current configuration
    function Frame_Time

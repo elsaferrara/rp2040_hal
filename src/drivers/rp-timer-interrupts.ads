@@ -3,7 +3,7 @@
 --
 --  SPDX-License-Identifier: BSD-3-Clause
 --
-with HAL.Time; use HAL.Time;
+--  with HAL.Time; use HAL.Time;
 
 package RP.Timer.Interrupts with SPARK_Mode, Elaborate_Body is
 
@@ -35,8 +35,7 @@ package RP.Timer.Interrupts with SPARK_Mode, Elaborate_Body is
    procedure Delay_Milliseconds
       (This : Delays;
        Ms   : Natural);
-     --  with Pre => Enabled (This);
-
+   --  with Pre => Enabled (This);
 
    --  overriding
    procedure Delay_Seconds
