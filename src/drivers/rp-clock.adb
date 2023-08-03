@@ -258,16 +258,10 @@ package body RP.Clock with SPARK_Mode is
       Result := CLOCKS_Periph.CLK (CID).CTRL.ENABLE;
    end Check_Enabled;
 
-   function Enabled
-     (CID : Clock_Id)
-      return Boolean
-     with SPARK_Mode => Off
-   is
-      Result : Boolean;
-   begin
-      Check_Enabled (CID, Result);
-      return Result;
-   end Enabled;
+   --  function Enabled
+   --    (CID : Clock_Id)
+   --     return Boolean
+   --  is (CLOCKS_Periph.CLK (CID).CTRL.ENABLE);
 
    procedure Frequency
      (CID      : Countable_Clock_Id;

@@ -8,12 +8,17 @@ with RP.Reset;
 with HAL; use HAL;
 
 package body RP.SPI with SPARK_Mode is
+
+   procedure Set_Speed_Inner
+     (Baud : Hertz;
+      Periph : in out SPI_Peripheral);
+
    procedure Configure
      (This   : out SPI_Port;
       Config : SPI_Configuration := Default_SPI_Configuration)
    is
       procedure Configure_Inner
-        (This   : in out SPI_Port;
+        (This   : out SPI_Port;
          Config : SPI_Configuration := Default_SPI_Configuration;
          Periph : in out SPI_Peripheral)
       is
@@ -55,7 +60,7 @@ package body RP.SPI with SPARK_Mode is
             TXDMAE => True,
             others => <>);
 
-         Set_Speed (This, Config.Baud);
+          Set_Speed_Inner (Config.Baud, Periph);
 
          This.Blocking := Config.Blocking;
 
@@ -68,11 +73,7 @@ package body RP.SPI with SPARK_Mode is
       end case;
    end Configure;
 
-   procedure Set_Speed
-     (This : SPI_Port;
-      Baud : Hertz)
-   is
-      procedure Set_Speed_Inner
+   procedure Set_Speed_Inner
         (Baud : Hertz;
          Periph : in out SPI_Peripheral)
       is
@@ -108,6 +109,11 @@ package body RP.SPI with SPARK_Mode is
          Periph.SSPCPSR.CPSDVSR := SSPCPSR_CPSDVSR_Field (Prescale);
          Periph.SSPCR0.SCR := SSPCR0_SCR_Field (Postdiv - 1);
       end Set_Speed_Inner;
+
+   procedure Set_Speed
+     (This : SPI_Port;
+      Baud : Hertz)
+   is
    begin
       case This.Num is
          when 0 => Set_Speed_Inner (Baud, SPI0_Periph);

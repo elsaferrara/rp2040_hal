@@ -46,8 +46,7 @@ is
 
    procedure Configure
      (This   : out SPI_Port;
-      Config : SPI_Configuration := Default_SPI_Configuration)
-     with Pre => Config.Baud <= RP.Clock.Configured_Frequency (RP.Clock.PERI);
+      Config : SPI_Configuration := Default_SPI_Configuration);
 
    procedure Set_Speed
      (This : SPI_Port;

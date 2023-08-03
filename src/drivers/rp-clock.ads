@@ -66,10 +66,6 @@ is
       Result : out Boolean)
      with Pre => CID in GPOUT0 .. RTC;
 
-   function Enabled
-     (CID : Clock_Id)
-           return Boolean;
-
    subtype SYS_Clock_Id is Clock_Id range PLL_SYS .. XOSC;
    procedure Set_SYS_Source
      (Source : SYS_Clock_Id);
@@ -321,5 +317,11 @@ private
 
    CLOCKS_Periph : aliased CLOCKS_Peripheral
      with Import, Async_Writers => True, Effective_Reads, Address => RP2040_SVD.CLOCKS_Base;
+
+      function Enabled
+     (CID : Clock_Id)
+      return Boolean
+   is (CLOCKS_Periph.CLK (CID).CTRL.ENABLE)
+     with Volatile_Function;
 
 end RP.Clock;

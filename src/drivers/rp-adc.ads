@@ -36,13 +36,13 @@ is
    --  Configure the GPIO pin for analog input
    procedure Configure
      (Channel : ADC_Channel)
-     with Pre => RP.Clock.Enabled (RP.Clock.ADC)
+     --  with Pre => RP.Clock.Enabled (RP.Clock.ADC)
      --  with Pre => RP.Clock.Frequency (RP.Clock.ADC) = 48_000_000
    ;
 
    procedure Configure
      (Channels : ADC_Channels)
-     with Pre => RP.Clock.Enabled (RP.Clock.ADC)
+     --  with Pre => RP.Clock.Enabled (RP.Clock.ADC)
      --  with Pre => RP.Clock.Frequency (RP.Clock.ADC) = 48_000_000
    ;
 

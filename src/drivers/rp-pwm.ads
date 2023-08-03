@@ -68,7 +68,8 @@ is
    procedure Set_Frequency
      (Slice     : PWM_Slice;
       Frequency : Hertz)
-     with Pre => Initialized and RP.Clock.Enabled (RP.Clock.SYS);
+     --  with Pre => Initialized and RP.Clock.Enabled (RP.Clock.SYS)
+   ;
 
    --  on each divided clock cycle, a counter is incremented toward Clocks and
    --  wraps around when it matches this value
